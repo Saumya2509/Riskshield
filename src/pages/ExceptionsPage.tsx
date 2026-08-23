@@ -2,29 +2,30 @@ import { useState } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
-import { runReconciliation } from '../finance/reconciliationEngine'
+import { runReconciliation, type MatchResult } from '../finance/reconciliationEngine'
+import { updateRecordInSupabase } from '../finance/supabaseClient'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
 
 const EXCEPTION_DESCRIPTIONS: Record<string, { label: string; action: string; badgeColor: { bg: string; text: string } }> = {
   AMOUNT_MISMATCH: {
     label: 'Amount Mismatch / Short Pay',
-    action: 'Issue debit memo to counterparty or request credit note for variance',
+    action: 'Issue debit memo to counterparty or accept gateway fee variance',
     badgeColor: { bg: '#fee2e2', text: '#991b1b' },
   },
   MISSING_REF: {
     label: 'Missing Reference ID',
-    action: 'Contact remitter / bank to retrieve invoice or PO reference number',
+    action: 'Assign invoice/PO reference or post to suspense GL 2190 until verified',
     badgeColor: { bg: '#ffedd5', text: '#9a3412' },
   },
   DUPLICATE: {
     label: 'Duplicate Invoice / Billing',
-    action: 'Hold payment and verify duplicate bill against previously cleared entries',
+    action: 'Void duplicate billing entry and unblock primary payment',
     badgeColor: { bg: '#fef3c7', text: '#92400e' },
   },
   CURRENCY_MISMATCH: {
     label: 'Foreign Currency Discrepancy',
-    action: 'Apply daily spot booking FX rate or request USD denominated invoice',
+    action: 'Apply daily spot booking FX rate and post realized FX gain/loss',
     badgeColor: { bg: '#ede9fe', text: '#6d28d9' },
   },
   DATE_WINDOW_EXCEEDED: {
@@ -34,12 +35,12 @@ const EXCEPTION_DESCRIPTIONS: Record<string, { label: string; action: string; ba
   },
   NO_MATCH: {
     label: 'Unmatched External Deposit',
-    action: 'Investigate remitter origin or post to suspense ledger account',
+    action: 'Pair with open customer ledger or allocate to suspense deposit GL',
     badgeColor: { bg: '#fee2e2', text: '#b91c1c' },
   },
   ORPHAN_LEDGER: {
     label: 'Orphan Ledger Entry',
-    action: 'Chase counterparty for payment receipt or reverse accrual',
+    action: 'Reverse uncollected accrual or issue payment reminder notice',
     badgeColor: { bg: '#f1f5f9', text: '#475569' },
   },
 }
@@ -52,7 +53,16 @@ export default function ExceptionsPage() {
   const report = ctx.report || runReconciliation()
   const [filterCode, setFilterCode] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set())
+  
+  // Track resolved state with resolution metadata
+  const [resolvedMap, setResolvedMap] = useState<Map<string, { method: string; note: string }>>(new Map())
+  
+  // Active modal state
+  const [solvingItem, setSolvingItem] = useState<MatchResult | null>(null)
+  const [activeTab, setActiveTab] = useState<string>('action-1')
+  const [customInput, setCustomInput] = useState<string>('')
+  const [analystName, setAnalystName] = useState<string>('Sarah Chen (Lead Controller)')
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
   const allExceptions = report.exceptionList
 
@@ -70,15 +80,6 @@ export default function ExceptionsPage() {
     return true
   })
 
-  function toggleResolved(id: string) {
-    setResolvedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   // Count by code
   const codeCounts = allExceptions.reduce((acc, e) => {
     const c = e.exceptionCode || 'AMOUNT_MISMATCH'
@@ -87,8 +88,45 @@ export default function ExceptionsPage() {
   }, {} as Record<string, number>)
 
   const totalOpenAmount = allExceptions
-    .filter(e => !resolvedIds.has(e.record.id))
+    .filter(e => !resolvedMap.has(e.record.id))
     .reduce((s, e) => s + e.record.amount, 0)
+
+  // Open modal handler
+  function handleOpenSolveModal(item: MatchResult) {
+    setSolvingItem(item)
+    setActiveTab('action-1')
+    setCustomInput('')
+  }
+
+  // Execute resolution
+  async function handleExecuteResolution(methodTitle: string, defaultNote: string) {
+    if (!solvingItem) return
+    setIsSubmitting(true)
+
+    const finalNote = customInput.trim() ? `${methodTitle} — ${customInput}` : `${methodTitle}: ${defaultNote}`
+    const recordId = solvingItem.record.id
+
+    // Update local state
+    setResolvedMap(prev => {
+      const next = new Map(prev)
+      next.set(recordId, { method: methodTitle, note: finalNote })
+      return next
+    })
+
+    // Cloud background sync
+    try {
+      await updateRecordInSupabase(recordId, {
+        is_resolved: true,
+        assigned_analyst: analystName,
+        resolution_notes: finalNote,
+      })
+    } catch (err) {
+      console.warn('Could not sync resolution to Supabase:', err)
+    }
+
+    setIsSubmitting(false)
+    setSolvingItem(null)
+  }
 
   return (
     <div className="dash-app fin-page">
@@ -101,113 +139,92 @@ export default function ExceptionsPage() {
           <header className="d-pagehead">
             <div>
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                Exceptions Management
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 9px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
-                  {allExceptions.length - resolvedIds.size} Open Issues
+                Exception Resolution Workbench
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
+                  {allExceptions.length - resolvedMap.size} Open Discrepancies
                 </span>
               </h1>
               <p>
-                Unreconciled items · Variance analysis · Dispute resolution workflows · Root-cause classification
+                Interactive 1-click accounting solutions · Debit/Credit Memos · Suspense GL Allocation · Spot FX adjustments
               </p>
             </div>
             <div className="d-page-actions">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: '0.84rem', color: '#64748b' }}>
-                  Total Open: <strong style={{ color: '#dc2626' }}>₹{Math.round(totalOpenAmount).toLocaleString('en-IN')}</strong>
-                </span>
-                <button
-                  className="d-btn d-btn-ghost"
-                  onClick={() => {
-                    const allIds = new Set(allExceptions.map(e => e.record.id))
-                    setResolvedIds(allIds)
-                  }}
-                  type="button"
-                >
-                  ✓ Mark All Reviewed
-                </button>
+              <div style={{ textAlign: 'right', marginRight: 12 }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Unresolved Variance Exposure</span>
+                <strong style={{ fontSize: '1.2rem', color: '#dc2626' }}>₹{Math.round(totalOpenAmount).toLocaleString('en-IN')}</strong>
               </div>
+              <a href="#/reconciliation" className="d-btn d-btn-primary" style={{ textDecoration: 'none' }}>
+                ↺ Re-Run Batch
+              </a>
             </div>
           </header>
 
-          {/* Exception Filter Chips */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6, marginBottom: 18 }}>
-            <button
-              type="button"
+          {/* Category Filter Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 20 }}>
+            <div
               onClick={() => setFilterCode('ALL')}
               style={{
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: 'none',
+                padding: '10px 14px',
+                background: filterCode === 'ALL' ? '#eff6ff' : '#fff',
+                border: `1px solid ${filterCode === 'ALL' ? '#3b82f6' : '#e2e8f0'}`,
+                borderRadius: 10,
                 cursor: 'pointer',
-                fontSize: '0.8rem',
-                fontWeight: 650,
-                background: filterCode === 'ALL' ? '#2563eb' : '#fff',
-                color: filterCode === 'ALL' ? '#fff' : '#64748b',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                whiteSpace: 'nowrap',
+                boxShadow: filterCode === 'ALL' ? '0 0 0 2px #3b82f6' : 'none',
               }}
             >
-              All Exceptions ({allExceptions.length})
-            </button>
-            {Object.keys(EXCEPTION_DESCRIPTIONS).map((code) => {
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>All Exceptions</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>{allExceptions.length}</div>
+              <span style={{ fontSize: '0.68rem', color: '#16a34a' }}>{resolvedMap.size} Solved</span>
+            </div>
+
+            {Object.entries(EXCEPTION_DESCRIPTIONS).map(([code, meta]) => {
               const count = codeCounts[code] || 0
               if (count === 0) return null
               const isSelected = filterCode === code
               return (
-                <button
+                <div
                   key={code}
-                  type="button"
-                  onClick={() => setFilterCode(code)}
+                  onClick={() => setFilterCode(isSelected ? 'ALL' : code)}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: 8,
-                    border: 'none',
+                    padding: '10px 14px',
+                    background: isSelected ? meta.badgeColor.bg : '#fff',
+                    border: `1px solid ${isSelected ? meta.badgeColor.text : '#e2e8f0'}`,
+                    borderRadius: 10,
                     cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    fontWeight: 650,
-                    background: isSelected ? '#0f172a' : '#fff',
-                    color: isSelected ? '#fff' : '#334155',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                    whiteSpace: 'nowrap',
+                    boxShadow: isSelected ? `0 0 0 2px ${meta.badgeColor.text}` : 'none',
                   }}
                 >
-                  {code} ({count})
-                </button>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: meta.badgeColor.text, textTransform: 'uppercase' }}>{code}</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>{count}</div>
+                  <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{meta.label.split('/')[0]}</span>
+                </div>
               )
             })}
           </div>
 
           {/* Search bar */}
-          <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
             <input
-              type="search"
-              placeholder="Search exceptions by ID, counterparty, or memo…"
+              type="text"
+              placeholder="Search by Record ID (e.g. B3-BNK-019), Counterparty, or Description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: 420,
-                padding: '8px 14px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                fontSize: '0.84rem',
-                background: '#fff',
-              }}
+              style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
             />
           </div>
 
-          {/* Exceptions Table */}
+          {/* Active Exception Records Table */}
           <div className="fin-card">
             <div className="fin-card-hd">
               <div>
                 <h2 className="fin-card-title">Active Exception Records</h2>
                 <p className="fin-card-desc">
-                  Showing {filtered.length} exceptions matching filter
+                  Showing {filtered.length} exceptions matching filter · Click <strong>⚡ Solve</strong> on any row to execute accounting action
                 </p>
               </div>
             </div>
 
-            <div className="fin-rec-wrap" style={{ maxHeight: 520 }}>
+            <div className="fin-rec-wrap" style={{ maxHeight: 540 }}>
               <table className="fin-tbl">
                 <thead>
                   <tr>
@@ -219,24 +236,22 @@ export default function ExceptionsPage() {
                     <th style={{ textAlign: 'right' }}>Amount</th>
                     <th style={{ textAlign: 'right' }}>Variance (Δ)</th>
                     <th>Suggested Action</th>
-                    <th style={{ textAlign: 'center' }}>Action</th>
+                    <th style={{ textAlign: 'center', width: 140 }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(item => {
-                    const isResolved = resolvedIds.has(item.record.id)
+                    const resolvedInfo = resolvedMap.get(item.record.id)
+                    const isResolved = Boolean(resolvedInfo)
                     const code = item.exceptionCode || 'AMOUNT_MISMATCH'
                     const meta = EXCEPTION_DESCRIPTIONS[code] || EXCEPTION_DESCRIPTIONS['NO_MATCH']
 
                     return (
-                      <tr key={item.record.id} style={{ opacity: isResolved ? 0.45 : 1, transition: 'opacity 0.2s' }}>
+                      <tr key={item.record.id} style={{ opacity: isResolved ? 0.6 : 1, transition: 'opacity 0.2s', background: isResolved ? '#f0fdf4' : 'transparent' }}>
                         <td style={{ textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={isResolved}
-                            onChange={() => toggleResolved(item.record.id)}
-                            title="Mark as resolved / cleared"
-                          />
+                          <span style={{ fontSize: '1rem' }}>
+                            {isResolved ? '✅' : '⚠️'}
+                          </span>
                         </td>
                         <td className="fin-mono">
                           <a
@@ -274,25 +289,52 @@ export default function ExceptionsPage() {
                           {item.delta > 0.01 ? `−₹${item.delta.toFixed(2)}` : '—'}
                         </td>
                         <td style={{ fontSize: '0.78rem', color: '#475569', maxWidth: 300 }}>
-                          {item.suggestedAction || meta.action}
+                          {isResolved ? (
+                            <span style={{ color: '#16a34a', fontWeight: 600 }}>
+                              ✓ {resolvedInfo?.note || 'Solved via journal adjustment'}
+                            </span>
+                          ) : (
+                            item.suggestedAction || meta.action
+                          )}
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => toggleResolved(item.record.id)}
-                            style={{
-                              padding: '3px 10px',
+                          {isResolved ? (
+                            <span style={{
+                              padding: '4px 10px',
                               borderRadius: 6,
-                              border: '1px solid #cbd5e1',
-                              background: isResolved ? '#dcfce7' : '#fff',
-                              color: isResolved ? '#15803d' : '#334155',
+                              background: '#dcfce7',
+                              color: '#15803d',
                               fontSize: '0.72rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {isResolved ? '✓ Resolved' : 'Clear'}
-                          </button>
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              ✓ Solved
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSolveModal(item)}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: 6,
+                                border: '1px solid #2563eb',
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                fontSize: '0.76rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                boxShadow: '0 1px 3px rgba(37,99,235,0.3)',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              ⚡ Solve
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )
@@ -304,6 +346,286 @@ export default function ExceptionsPage() {
 
         </main>
       </div>
+
+      {/* ─── INTERACTIVE RESOLUTION ACTION MODAL ──────────────────────────────── */}
+      {solvingItem && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 20
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 640,
+            boxShadow: '0 25px 60px -15px rgba(0,0,0,0.5)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            animation: 'scaleUp 0.2s ease-out'
+          }}>
+            {/* Modal Header */}
+            <div style={{ padding: '18px 24px', background: '#0f172a', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 800 }}>⚡ Solve Exception: {solvingItem.record.id}</span>
+                  <span style={{ background: '#3b82f6', color: '#fff', fontSize: '0.68rem', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
+                    {solvingItem.exceptionCode || 'AMOUNT_MISMATCH'}
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+                  Counterparty: <strong>{solvingItem.record.counterparty}</strong> · Source: <strong>{solvingItem.record.source}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSolvingItem(null)}
+                style={{ background: 'transparent', border: 0, color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px' }}>
+              {/* Discrepancy KPI Banner */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
+                <div>
+                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Record Amount</small>
+                  <strong style={{ display: 'block', fontSize: '1.1rem', color: '#0f172a' }}>₹{solvingItem.record.amount.toLocaleString('en-IN')}</strong>
+                </div>
+                <div>
+                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Variance Delta</small>
+                  <strong style={{ display: 'block', fontSize: '1.1rem', color: solvingItem.delta > 0 ? '#dc2626' : '#16a34a' }}>
+                    {solvingItem.delta > 0 ? `−₹${solvingItem.delta.toFixed(2)}` : '₹0.00'}
+                  </strong>
+                </div>
+                <div>
+                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Suggested Remedy</small>
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, marginTop: 2 }}>
+                    {solvingItem.exceptionCode === 'MISSING_REF' ? 'Assign Ref / Suspense' : (solvingItem.exceptionCode === 'CURRENCY_MISMATCH' ? 'Spot FX Booking' : 'Post Debit/Fee Memo')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Selection Tabs based on Exception Code */}
+              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
+                Select Accounting Resolution Action:
+              </p>
+
+              {/* 1. AMOUNT_MISMATCH / PARTIAL */}
+              {(!solvingItem.exceptionCode || solvingItem.exceptionCode === 'AMOUNT_MISMATCH' || solvingItem.status === 'Partial') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div
+                    onClick={() => setActiveTab('action-1')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-1' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-1' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>📝 Option 1: Raise Debit Memo for ₹{solvingItem.delta.toFixed(2)}</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Generates customer debit note and holds remaining balance until settled.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setActiveTab('action-2')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-2' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-2' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>⚖️ Option 2: Accept Gateway Fee Write-Off (GL 6200)</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Recognizes the ₹{solvingItem.delta.toFixed(2)} discrepancy as payment processing / bank MDR fee.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. MISSING_REF */}
+              {solvingItem.exceptionCode === 'MISSING_REF' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div
+                    onClick={() => setActiveTab('action-1')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-1' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-1' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🔍 Option 1: Link to Discovered Invoice Ref</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Attach matching invoice/PO number retrieved from customer remitter.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setActiveTab('action-2')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-2' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-2' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🏛️ Option 2: Post to Unallocated Suspense Account (GL 2190)</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Transfers ₹{solvingItem.record.amount.toLocaleString('en-IN')} to suspense ledger pending customer confirmation.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. CURRENCY_MISMATCH */}
+              {solvingItem.exceptionCode === 'CURRENCY_MISMATCH' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div
+                    onClick={() => setActiveTab('action-1')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-1' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-1' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>💱 Option 1: Apply Spot Booking FX Rate (USD/INR @ ₹83.40)</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Converts foreign currency and posts realized FX variance to GL 7100.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. DUPLICATE */}
+              {solvingItem.exceptionCode === 'DUPLICATE' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div
+                    onClick={() => setActiveTab('action-1')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-1' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-1' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🚫 Option 1: Void Duplicate Billing Entry</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Marks the duplicate as cancelled and unblocks the primary cleared transaction.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. ORPHAN_LEDGER / NO_MATCH */}
+              {(solvingItem.exceptionCode === 'ORPHAN_LEDGER' || solvingItem.exceptionCode === 'NO_MATCH' || solvingItem.exceptionCode === 'DATE_WINDOW_EXCEEDED') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div
+                    onClick={() => setActiveTab('action-1')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-1' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-1' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>↺ Option 1: Reverse Accrual / Post Journal Entry</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Reverses uncollected ledger accrual entry for month-end compliance.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Custom Note input */}
+              <div style={{ marginTop: 14 }}>
+                <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                  Auditor Resolution Memo (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Counterparty confirmed via email ticket #8492..."
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              {/* Analyst Assignee */}
+              <div style={{ marginTop: 10 }}>
+                <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                  Assigned Certifier
+                </label>
+                <select
+                  value={analystName}
+                  onChange={(e) => setAnalystName(e.target.value)}
+                  style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.8rem', background: '#fff' }}
+                >
+                  <option value="Sarah Chen (Lead Controller)">Sarah Chen (Lead Controller)</option>
+                  <option value="Priya Sharma (Senior Auditor)">Priya Sharma (Senior Auditor)</option>
+                  <option value="Alex Morgan (Treasury Ops)">Alex Morgan (Treasury Ops)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setSolvingItem(null)}
+                className="d-btn d-btn-ghost"
+                style={{ fontSize: '0.84rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => {
+                  const code = solvingItem.exceptionCode || 'AMOUNT_MISMATCH'
+                  if (code === 'MISSING_REF') {
+                    if (activeTab === 'action-1') handleExecuteResolution('Ref Linked', 'Attached discovered invoice ref from counterparty remitter')
+                    else handleExecuteResolution('Suspense Posted', 'Transferred unallocated funds to Suspense Account GL 2190')
+                  } else if (code === 'CURRENCY_MISMATCH') {
+                    handleExecuteResolution('FX Spot Converted', 'Applied booking spot FX rate @ ₹83.40; realized FX gain/loss booked')
+                  } else if (code === 'DUPLICATE') {
+                    handleExecuteResolution('Duplicate Voided', 'Voided duplicate invoice entry #2; primary charge cleared')
+                  } else if (code === 'ORPHAN_LEDGER' || code === 'NO_MATCH') {
+                    handleExecuteResolution('Accrual Reversed', 'Reversed uncollected accrual journal entry for period close')
+                  } else {
+                    if (activeTab === 'action-1') handleExecuteResolution('Debit Memo Raised', `Raised debit memo #DM-${solvingItem.record.id.slice(-3)} for ₹${solvingItem.delta.toFixed(2)}`)
+                    else handleExecuteResolution('Gateway Fee Accepted', `Booked ₹${solvingItem.delta.toFixed(2)} variance to Gateway MDR Expense GL 6200`)
+                  }
+                }}
+                className="d-btn d-btn-primary"
+                style={{ fontSize: '0.84rem', padding: '8px 20px' }}
+              >
+                {isSubmitting ? 'Syncing...' : '✓ Confirm & Execute Fix'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

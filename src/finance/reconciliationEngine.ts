@@ -132,11 +132,11 @@ function classifyException(
     }
   }
 
-  // CURRENCY_MISMATCH — non-USD invoice
-  if (record.currency !== 'USD') {
+  // CURRENCY_MISMATCH — non-INR invoice
+  if (record.currency !== 'INR') {
     return {
       code: 'CURRENCY_MISMATCH',
-      reason: `Record is denominated in ${record.currency}; ledger expects USD. FX conversion required.`,
+      reason: `Record is denominated in ${record.currency}; ledger expects INR. FX conversion required.`,
     }
   }
 
@@ -154,7 +154,7 @@ function classifyException(
     if (diff > 0.01) {
       return {
         code: 'AMOUNT_MISMATCH',
-        reason: `Amount $${record.amount.toFixed(2)} differs from ledger $${ldg.amount.toFixed(2)} by ${(diff * 100).toFixed(1)}% — outside fuzzy tolerance.`,
+        reason: `Amount ₹${record.amount.toFixed(2)} differs from ledger ₹${ldg.amount.toFixed(2)} by ${(diff * 100).toFixed(1)}% — outside fuzzy tolerance.`,
       }
     }
   }
@@ -284,8 +284,8 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
         status: 'Partial',
         pass: 3,
         exceptionCode: 'AMOUNT_MISMATCH',
-        exceptionReason: `Short pay: $${record.amount.toFixed(2)} received vs $${ldg.amount.toFixed(2)} booked. Delta: $${delta.toFixed(2)} (${(deltaPct * 100).toFixed(1)}%).`,
-        suggestedAction: 'Raise debit memo for $' + delta.toFixed(2) + '; hold clearing until settled.',
+        exceptionReason: `Short pay: ₹${record.amount.toFixed(2)} received vs ₹${ldg.amount.toFixed(2)} booked. Delta: ₹${delta.toFixed(2)} (${(deltaPct * 100).toFixed(1)}%).`,
+        suggestedAction: 'Raise debit memo for ₹' + delta.toFixed(2) + '; hold clearing until settled.',
         delta,
         deltaPct,
         confidence: Math.round(70 - deltaPct * 100),
