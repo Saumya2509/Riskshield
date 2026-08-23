@@ -6,6 +6,7 @@ import { runReconciliation } from '../finance/reconciliationEngine'
 import { runMLScoring } from '../finance/mlScorer'
 import { runTaxLineMatcher } from '../finance/taxLineMatcher'
 import { buildForecast } from '../finance/cashForecast'
+import TaxLineMatcherPanel from '../finance/TaxLineMatcherPanel'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
 
@@ -458,6 +459,9 @@ export default function ReportsPage() {
               </div>
             </div>
           </div>
+
+          {/* ── 8.5 TAX-LINE MATCHER & GL CLASSIFICATION (REQUIREMENT 4) ──────── */}
+          <TaxLineMatcherPanel taxSummary={taxSummary} />
 
           {/* ── 9. RECENT REPORTS & EXPORT BUTTONS ──────────────────────────────── */}
           <section className="fin-card" style={{ padding: '22px 24px' }} aria-label="Recent Reports and Exports">
