@@ -60,11 +60,11 @@ export default function ExceptionsPage() {
   const [customInput, setCustomInput] = useState<string>('')
   const [analystName, setAnalystName] = useState<string>('Sarah Chen (Lead Controller)')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null)
 
   const allExceptions = report.exceptionList
   const resolvedMap = ctx.resolvedMap
   const resolvedCount = Object.keys(resolvedMap).length
-  const allFixed = allExceptions.length > 0 && resolvedCount >= allExceptions.length
 
   const filtered = allExceptions.filter(e => {
     const code = e.exceptionCode || (e.status === 'Partial' ? 'AMOUNT_MISMATCH' : 'NO_MATCH')
@@ -128,6 +128,13 @@ export default function ExceptionsPage() {
     setSolvingItem(null)
   }
 
+  // Save changes and update Multi-Source Reconciliation
+  function handleSaveToMultiSource() {
+    ctx.saveFixesToMultiSource()
+    setSaveSuccessMsg(`Saved! ${resolvedCount} resolved record(s) applied to Multi-Source Reconciliation.`)
+    setTimeout(() => setSaveSuccessMsg(null), 6000)
+  }
+
   return (
     <div className="dash-app fin-page">
       <TopNav onMenu={() => setMenuOpen(true)} />
@@ -140,13 +147,12 @@ export default function ExceptionsPage() {
             <div>
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 Exception Resolution Workbench
-                {allFixed ? (
-                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '3px 10px', background: '#dcfce7', color: '#15803d', borderRadius: 999, border: '1px solid #86efac' }}>
-                    ✓ 100% Reconciled (All Fixed)
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
-                    {allExceptions.length - resolvedCount} Open Discrepancies
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
+                  {allExceptions.length - resolvedCount} Open Discrepancies
+                </span>
+                {resolvedCount > 0 && (
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#dcfce7', color: '#15803d', borderRadius: 999 }}>
+                    ✓ {resolvedCount} Fixed
                   </span>
                 )}
               </h1>
@@ -154,46 +160,49 @@ export default function ExceptionsPage() {
                 Interactive 1-click accounting solutions · Debit/Credit Memos · Suspense GL Allocation · Spot FX adjustments
               </p>
             </div>
-            <div className="d-page-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ textAlign: 'right', marginRight: 8 }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Unresolved Variance Exposure</span>
-                <strong style={{ fontSize: '1.2rem', color: totalOpenAmount > 0 ? '#dc2626' : '#16a34a' }}>
+            <div className="d-page-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'right', marginRight: 4 }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Unresolved Exposure</span>
+                <strong style={{ fontSize: '1.15rem', color: totalOpenAmount > 0 ? '#dc2626' : '#16a34a' }}>
                   ₹{Math.round(totalOpenAmount).toLocaleString('en-IN')}
                 </strong>
               </div>
 
-              {/* 1-Click Auto-Fix All & Re-Run Button */}
-              {!allFixed ? (
-                <button
-                  type="button"
-                  onClick={() => ctx.autoFixAll()}
-                  className="d-btn d-btn-primary"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
-                    fontWeight: 700,
-                  }}
-                >
-                  ⚡ Auto-Fix All &amp; Re-Run (100%)
-                </button>
-              ) : (
+              {/* SAVE BUTTON FOR FIXES */}
+              <button
+                type="button"
+                onClick={handleSaveToMultiSource}
+                disabled={resolvedCount === 0}
+                className="d-btn d-btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: resolvedCount > 0 ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' : '#94a3b8',
+                  borderColor: resolvedCount > 0 ? '#16a34a' : '#94a3b8',
+                  boxShadow: resolvedCount > 0 ? '0 2px 8px rgba(22,163,74,0.3)' : 'none',
+                  fontWeight: 700,
+                  cursor: resolvedCount > 0 ? 'pointer' : 'not-allowed',
+                }}
+              >
+                💾 Save Changes &amp; Reconcile Multi-Source
+              </button>
+
+              {resolvedCount > 0 && (
                 <button
                   type="button"
                   onClick={() => ctx.resetFixes()}
                   className="d-btn d-btn-ghost"
-                  style={{ fontSize: '0.8rem' }}
+                  style={{ fontSize: '0.78rem' }}
                 >
-                  ↺ Reset to Raw (39 Errors)
+                  ↺ Reset Fixes
                 </button>
               )}
             </div>
           </header>
 
-          {/* 100% Reconciled Celebration Banner */}
-          {allFixed && (
+          {/* Success Banner on Save */}
+          {saveSuccessMsg && (
             <div style={{
               padding: '14px 20px',
               background: '#f0fdf4',
@@ -207,22 +216,22 @@ export default function ExceptionsPage() {
               boxShadow: '0 2px 6px rgba(22,163,74,0.1)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: '1.6rem' }}>🎉</span>
+                <span style={{ fontSize: '1.5rem' }}>✅</span>
                 <div>
-                  <strong style={{ fontSize: '0.95rem', color: '#166534', display: 'block' }}>
-                    100.0% Reconciled — All {allExceptions.length} Discrepancies Fixed &amp; Certified!
+                  <strong style={{ fontSize: '0.92rem', color: '#166534', display: 'block' }}>
+                    {saveSuccessMsg}
                   </strong>
                   <span style={{ fontSize: '0.78rem', color: '#15803d' }}>
-                    Every exception has been balanced with corresponding Debit Memos, Suspense allocations, FX adjustments, and accrual reversals.
+                    All applied fixes are now synced to Multi-Source Reconciliation, cash forecasts, and Supabase audit logs.
                   </span>
                 </div>
               </div>
               <a
-                href="#/reports"
+                href="#/reconciliation"
                 className="d-btn d-btn-primary"
                 style={{ fontSize: '0.78rem', padding: '6px 14px', textDecoration: 'none', background: '#16a34a', borderColor: '#16a34a' }}
               >
-                Download Certified Audit CSV →
+                View Multi-Source Recon →
               </a>
             </div>
           )}
@@ -242,7 +251,7 @@ export default function ExceptionsPage() {
             >
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>All Exceptions</span>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>{allExceptions.length}</div>
-              <span style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 700 }}>{resolvedCount} Solved</span>
+              <span style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 700 }}>{resolvedCount} Fixed</span>
             </div>
 
             {Object.entries(EXCEPTION_DESCRIPTIONS).map(([code, meta]) => {
@@ -287,7 +296,7 @@ export default function ExceptionsPage() {
               <div>
                 <h2 className="fin-card-title">Active Exception Records</h2>
                 <p className="fin-card-desc">
-                  Showing {filtered.length} exceptions · Click <strong>⚡ Solve</strong> to fix individually, or <strong>⚡ Auto-Fix All</strong> above
+                  Showing {filtered.length} exceptions · Click <strong>⚡ Solve</strong> on any row to apply fix, then click <strong>💾 Save Changes</strong> above
                 </p>
               </div>
             </div>
@@ -706,7 +715,7 @@ export default function ExceptionsPage() {
                 className="d-btn d-btn-primary"
                 style={{ fontSize: '0.84rem', padding: '8px 20px' }}
               >
-                {isSubmitting ? 'Syncing...' : '✓ Confirm & Execute Fix'}
+                {isSubmitting ? 'Syncing...' : '✓ Confirm Fix'}
               </button>
             </div>
           </div>

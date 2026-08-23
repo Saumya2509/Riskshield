@@ -4,8 +4,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { createContext, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ReconciliationReport } from './reconciliationEngine'
+import type { ReconciliationReport, MatchResult, MatchPass } from './reconciliationEngine'
+import { runReconciliation } from './reconciliationEngine'
 import type { MLBatchResult } from './mlScorer'
+import { syncReportToSupabase } from './supabaseClient'
 
 export interface ResolutionFix {
   method: string
@@ -26,8 +28,8 @@ interface FinanceContextType {
   setRecordCount: (count: number) => void
   resetReconciliation: () => void
   applyFix: (recordId: string, fix: ResolutionFix) => void
-  autoFixAll: () => void
   resetFixes: () => void
+  saveFixesToMultiSource: () => ReconciliationReport | null
 }
 
 const FinanceContext = createContext<FinanceContextType>({
@@ -43,8 +45,8 @@ const FinanceContext = createContext<FinanceContextType>({
   setRecordCount: () => {},
   resetReconciliation: () => {},
   applyFix: () => {},
-  autoFixAll: () => {},
   resetFixes: () => {},
+  saveFixesToMultiSource: () => null,
 })
 
 export function FinanceContextProvider({ children }: { children: ReactNode }) {
@@ -68,38 +70,63 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
     setResolvedMap(prev => ({ ...prev, [recordId]: fix }))
   }
 
-  function autoFixAll() {
-    if (!report) return
-    const newFixes: Record<string, ResolutionFix> = {}
-    const now = new Date().toLocaleTimeString()
-
-    for (const item of report.exceptionList) {
-      const code = item.exceptionCode || 'AMOUNT_MISMATCH'
-      let method = 'Debit Memo Raised'
-      let note = `Raised Debit Memo #DM-${item.record.id.slice(-3)} for ₹${item.delta.toFixed(2)}`
-
-      if (code === 'MISSING_REF') {
-        method = 'Suspense Allocated'
-        note = `Posted ₹${item.record.amount.toLocaleString('en-IN')} to Suspense GL 2190`
-      } else if (code === 'CURRENCY_MISMATCH') {
-        method = 'Spot FX Converted'
-        note = 'Applied booking spot FX rate @ ₹83.40; realized gain/loss booked'
-      } else if (code === 'DUPLICATE') {
-        method = 'Duplicate Voided'
-        note = 'Voided duplicate billing entry #2; primary charge cleared'
-      } else if (code === 'ORPHAN_LEDGER' || code === 'NO_MATCH') {
-        method = 'Accrual Reversed'
-        note = 'Reversed uncollected accrual journal entry for period close'
-      }
-
-      newFixes[item.record.id] = { method, note, timestamp: now }
-    }
-
-    setResolvedMap(newFixes)
-  }
-
   function resetFixes() {
     setResolvedMap({})
+  }
+
+  function saveFixesToMultiSource(): ReconciliationReport | null {
+    const base = report || runReconciliation()
+    if (!base) return null
+
+    // Update each record according to resolvedMap
+    const updatedResults: MatchResult[] = base.results.map((r: MatchResult) => {
+      const fix = resolvedMap[r.record.id]
+      if (!fix) return r
+
+      return {
+        ...r,
+        status: 'Exact' as const,
+        pass: (r.pass || 1) as MatchPass,
+        confidence: 100,
+        delta: 0,
+        deltaPct: 0,
+        exceptionCode: null,
+        exceptionReason: `Resolved via ${fix.method}. ${fix.note}`,
+        suggestedAction: `[Fixed] ${fix.note}`,
+      }
+    })
+
+    const exactCount = updatedResults.filter(r => r.status === 'Exact').length
+    const fuzzyCount = updatedResults.filter(r => r.status === 'Fuzzy').length
+    const partialCount = updatedResults.filter(r => r.status === 'Partial').length
+    const remainingExceptions = updatedResults.filter(r => r.status === 'Exception')
+    const clearedAmt = updatedResults.filter(r => r.status === 'Exact' || r.status === 'Fuzzy').reduce((s, r) => s + r.record.amount, 0)
+    const openAmt = remainingExceptions.reduce((s, r) => s + r.delta, 0)
+    const matchRate = base.totalAttempts > 0 ? ((base.totalAttempts - remainingExceptions.length) / base.totalAttempts) * 100 : 100
+
+    const updatedReport: ReconciliationReport = {
+      ...base,
+      results: updatedResults,
+      exactMatches: exactCount,
+      fuzzyMatches: fuzzyCount,
+      partialMatches: partialCount,
+      exceptions: remainingExceptions.length,
+      exceptionList: remainingExceptions,
+      clearedAmount: clearedAmt,
+      openAmount: openAmt,
+      matchRate,
+      accuracy: Math.min(100, (exactCount + fuzzyCount) / Math.max(1, base.totalAttempts) * 100),
+    }
+
+    setReportState(updatedReport)
+    setLastRunAt(new Date())
+
+    // Sync to Supabase in background
+    syncReportToSupabase(updatedReport, activeFileName || 'batch_1_enterprise_recon_500.csv').catch(err => {
+      console.warn('Could not sync updated report to Supabase:', err)
+    })
+
+    return updatedReport
   }
 
   function resetReconciliation() {
@@ -114,7 +141,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
     <FinanceContext.Provider value={{
       report, mlResult, lastRunAt, activeFileName, recordCount, resolvedMap,
       setReport, setMLResult, setActiveFileName, setRecordCount, resetReconciliation,
-      applyFix, autoFixAll, resetFixes
+      applyFix, resetFixes, saveFixesToMultiSource
     }}>
       {children}
     </FinanceContext.Provider>
