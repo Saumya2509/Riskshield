@@ -12,14 +12,19 @@ node_modules
 dist
 dist-ssr
 
-# Environment and secrets (DO NOT COMMIT)
+# All Environment files (strictly ignored)
 .env
+.env.*
+*.env
+.env.example
 .env.local
 .env.*.local
 .env.production
 .env.development
-*.env
-!.env.example
+
+# Text & Notes
+PROJECT_EXPLANATION.txt
+*.txt
 
 # Private & Cache
 .DS_Store
