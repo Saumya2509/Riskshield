@@ -286,8 +286,8 @@ export default function RecordDetailsPage() {
               </div>
             </div>
 
-            {/* Resolve and Assign Buttons */}
-            <div style={{ display: 'flex', gap: 10 }}>
+            {/* Resolve, Assign, and Save Buttons */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="d-btn d-btn-ghost"
@@ -300,7 +300,7 @@ export default function RecordDetailsPage() {
               {/* INTERACTIVE SOLVE BUTTON */}
               <button
                 type="button"
-                className="d-btn d-btn-primary"
+                className="d-btn d-btn-ghost"
                 onClick={() => {
                   setShowSolveModal(true)
                   setActiveTab('action-1')
@@ -309,9 +309,9 @@ export default function RecordDetailsPage() {
                 style={{
                   fontSize: '0.82rem',
                   height: 36,
-                  background: fixedInfo ? '#dcfce7' : '#2563eb',
-                  color: fixedInfo ? '#15803d' : '#fff',
-                  borderColor: fixedInfo ? '#86efac' : '#2563eb',
+                  background: fixedInfo ? '#dcfce7' : '#eff6ff',
+                  color: fixedInfo ? '#15803d' : '#1d4ed8',
+                  borderColor: fixedInfo ? '#86efac' : '#bfdbfe',
                   fontWeight: 700,
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -319,6 +319,31 @@ export default function RecordDetailsPage() {
                 }}
               >
                 {fixedInfo ? `✓ Solved: ${fixedInfo.method}` : '⚡ Solve Discrepancy'}
+              </button>
+
+              {/* SAVE BUTTON FOR RECORD DETAILS */}
+              <button
+                type="button"
+                onClick={() => {
+                  ctx.saveFixesToMultiSource()
+                  setSolveSuccessToast('💾 Saved! Record changes and applied fixes updated in Multi-Source Reconciliation.')
+                  setTimeout(() => setSolveSuccessToast(null), 5000)
+                }}
+                className="d-btn d-btn-primary"
+                style={{
+                  fontSize: '0.82rem',
+                  height: 36,
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  borderColor: '#16a34a',
+                  boxShadow: '0 2px 6px rgba(22,163,74,0.3)',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: '#ffffff'
+                }}
+              >
+                💾 Save Changes &amp; Reconcile Multi-Source
               </button>
             </div>
           </div>
