@@ -7,10 +7,11 @@ type SidebarProps = {
 export const SIDEBAR_NAV = [
   { id: 'dashboard',      label: 'Dashboard',                   href: '#/dashboard',      icon: '▦' },
   { id: 'reconciliation', label: '1. Multi-Source Recon',      href: '#/reconciliation', icon: '🔄' },
-  { id: 'ai-assistant',   label: '2. Settlement Q&A Agent',     href: '#/ai-assistant',   icon: '🤖' },
+  { id: 'exceptions',     label: '2. Exception Workbench',      href: '#/exceptions',     icon: '⚠️' },
   { id: 'cash-forecast',  label: '3. Forward Cash Forecaster',  href: '#/cash-forecast',  icon: '📈' },
-  { id: 'reports',        label: '4. Tax-Line Matcher',        href: '#/reports',        icon: '📑' },
-  { id: 'exceptions',     label: 'Exception Workbench',         href: '#/exceptions',     icon: '⚠️' },
+  { id: 'tax-matcher',    label: '4. Tax-Line Matcher',        href: '#/tax-matcher',    icon: '📑' },
+  { id: 'reports',        label: 'Reports & Downloads',         href: '#/reports',        icon: '📄' },
+  { id: 'ai-assistant',   label: 'Settlement Q&A Agent',        href: '#/ai-assistant',   icon: '🤖' },
   { id: 'settings',       label: 'Settings & Rules',            href: '#/settings',       icon: '⚙️' },
 ]
 
@@ -21,7 +22,7 @@ export default function Sidebar({ open, onClose, activeId = 'dashboard' }: Sideb
         <button className="d-backdrop" type="button" aria-label="Close menu" onClick={onClose} />
       )}
       <aside className={`d-sidebar${open ? ' is-open' : ''}`}>
-        <p className="d-side-label">4 Core Capabilities</p>
+        <p className="d-side-label">Finance &amp; Risk</p>
 
         <nav aria-label="Main navigation">
           {SIDEBAR_NAV.map(item => (

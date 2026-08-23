@@ -5,6 +5,7 @@ import ReconciliationPage from './pages/ReconciliationPage'
 import ExceptionsPage from './pages/ExceptionsPage'
 import CashForecastPage from './pages/CashForecastPage'
 import ReportsPage from './pages/ReportsPage'
+import TaxMatcherPage from './pages/TaxMatcherPage'
 import AIAssistantPage from './pages/AIAssistantPage'
 import SettingsPage from './pages/SettingsPage'
 import RecordDetailsPage from './pages/RecordDetailsPage'
@@ -17,6 +18,7 @@ export type View =
   | 'exceptions'
   | 'record-details'
   | 'cash-forecast'
+  | 'tax-matcher'
   | 'reports'
   | 'ai-assistant'
   | 'settings'
@@ -27,6 +29,7 @@ function currentView(): View {
   if (hash.startsWith('#/exceptions')) return 'exceptions'
   if (hash.startsWith('#/record-details')) return 'record-details'
   if (hash.startsWith('#/cash-forecast')) return 'cash-forecast'
+  if (hash.startsWith('#/tax-matcher')) return 'tax-matcher'
   if (hash.startsWith('#/reports')) return 'reports'
   if (hash.startsWith('#/ai-assistant')) return 'ai-assistant'
   if (hash.startsWith('#/settings')) return 'settings'
@@ -50,6 +53,7 @@ export default function App() {
       {view === 'exceptions'     && <ExceptionsPage />}
       {view === 'record-details' && <RecordDetailsPage />}
       {view === 'cash-forecast'  && <CashForecastPage />}
+      {view === 'tax-matcher'    && <TaxMatcherPage />}
       {view === 'reports'        && <ReportsPage />}
       {view === 'ai-assistant'   && <AIAssistantPage />}
       {view === 'settings'       && <SettingsPage />}
