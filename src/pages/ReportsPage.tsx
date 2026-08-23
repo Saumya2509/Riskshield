@@ -94,7 +94,64 @@ export default function ReportsPage() {
     document.body.removeChild(link)
   }
 
-  // Export Audit CSV
+  // Export Styled Excel (.xls) with Colored Headers and Formatting
+  function exportAuditExcel() {
+    const headers = ['Record ID', 'Bank Source', 'Customer/Vendor', 'Invoice Amount (₹)', 'Bank Amount (₹)', 'Ledger Amount (₹)', 'Status', 'Pass Tier', 'Variance Delta (₹)', 'AI Confidence', 'Exception Code', 'Suggested Action / Applied Fix']
+
+    const headerHtml = headers.map(h => `<th style="background-color: #1e3a8a; color: #ffffff; font-family: Arial, sans-serif; font-size: 11pt; font-weight: bold; padding: 8px 12px; border: 1px solid #334155; text-align: left;">${h}</th>`).join('')
+
+    const rowsHtml = report.results.map((r, idx) => {
+      const fix = ctx.resolvedMap[r.record.id]
+      const isFixed = Boolean(fix)
+      const idFormatted = isFixed ? `${r.record.id} (FIX)` : r.record.id
+      const statusFormatted = isFixed ? `${r.status} (FIXED)` : r.status
+      const actionFormatted = fix ? `[Fixed: ${fix.method}] ${fix.note}` : (r.suggestedAction || '')
+      const bg = isFixed ? '#f0fdf4' : (r.status === 'Exception' ? '#fef2f2' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc'))
+      const statusColor = isFixed ? '#15803d' : (r.status === 'Exact' ? '#16a34a' : (r.status === 'Fuzzy' ? '#2563eb' : (r.status === 'Partial' ? '#d97706' : '#dc2626')))
+
+      return `<tr style="background-color: ${bg};">
+        <td style="font-family: 'Courier New', monospace; font-weight: bold; padding: 6px 10px; border: 1px solid #e2e8f0; color: ${isFixed ? '#15803d' : '#2563eb'};">${idFormatted}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0;">${r.record.source}</td>
+        <td style="font-family: Arial, sans-serif; font-weight: 600; padding: 6px 10px; border: 1px solid #e2e8f0;">${r.record.counterparty}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0;">₹${r.record.amount.toFixed(2)}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0;">₹${(r.record.source === 'BANK' ? r.record.amount : (r.record.amount - r.delta)).toFixed(2)}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0;">${r.matchedLedger ? `₹${r.matchedLedger.amount.toFixed(2)}` : 'NONE'}</td>
+        <td style="font-family: Arial, sans-serif; font-weight: bold; color: ${statusColor}; padding: 6px 10px; border: 1px solid #e2e8f0;">${statusFormatted}</td>
+        <td style="font-family: Arial, sans-serif; text-align: center; padding: 6px 10px; border: 1px solid #e2e8f0;">Pass ${r.pass ?? 'N/A'}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; font-weight: bold; color: ${r.delta > 0 ? '#dc2626' : '#16a34a'}; padding: 6px 10px; border: 1px solid #e2e8f0;">${r.delta > 0 ? `−₹${r.delta.toFixed(2)}` : '₹0.00'}</td>
+        <td style="font-family: Arial, sans-serif; text-align: center; padding: 6px 10px; border: 1px solid #e2e8f0;">${r.confidence}%</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0;">${r.exceptionCode || 'NONE'}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: ${isFixed ? '#15803d' : '#334155'};">${actionFormatted}</td>
+      </tr>`
+    }).join('')
+
+    const excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>RiskShield Audit</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head>
+<body>
+  <table border="1" style="border-collapse: collapse; width: 100%;">
+    <thead>
+      <tr>${headerHtml}</tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+</body>
+</html>`
+
+    const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `RiskShield_Audit_Trail_${report.batchId}.xls`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Export Clean Audit CSV with UTF-8 BOM for Excel
   function exportAuditCSV() {
     const headers = ['Record ID', 'Bank Source', 'Customer/Vendor', 'Invoice Amount', 'Bank Amount', 'Ledger Amount', 'Status', 'Pass', 'Difference Delta', 'AI Confidence', 'Exception Code', 'Suggested Action / Applied Fix']
     const rows = report.results.map(r => {
@@ -118,9 +175,11 @@ export default function ReportsPage() {
         `"${actionFormatted.replace(/"/g, '""')}"`,
       ].join(',')
     })
-    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\r\n'))
+    // Add UTF-8 BOM (\uFEFF) so Excel renders rupee and special characters cleanly
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
-    link.setAttribute('href', csvContent)
+    link.href = URL.createObjectURL(blob)
     link.setAttribute('download', `RiskShield_Audit_Trail_${report.batchId}.csv`)
     document.body.appendChild(link)
     link.click()
@@ -578,10 +637,26 @@ export default function ReportsPage() {
                 <button
                   type="button"
                   onClick={exportAuditCSV}
-                  className="d-btn d-btn-primary"
+                  className="d-btn d-btn-ghost"
                   style={{ fontSize: '0.82rem', height: 36 }}
                 >
-                  📥 Download Full Audit CSV
+                  📥 Download Clean CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={exportAuditExcel}
+                  className="d-btn d-btn-primary"
+                  style={{
+                    fontSize: '0.82rem',
+                    height: 36,
+                    background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+                    borderColor: '#1e3a8a',
+                    boxShadow: '0 2px 6px rgba(37,99,235,0.3)',
+                    color: '#ffffff',
+                    fontWeight: 700
+                  }}
+                >
+                  📊 Download Styled Excel (Color Headers)
                 </button>
               </div>
             </div>
@@ -613,13 +688,20 @@ export default function ReportsPage() {
                     <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 700 }}>₹{Math.round(report.clearedAmount).toLocaleString('en-IN')}</td>
                     <td><span className="fin-tag fin-tag--safe">✓ {signedOff ? 'Controller Certified' : (report.exceptions === 0 ? 'Fully Reconciled' : 'Audit Ready')}</span></td>
                     <td style={{ fontSize: '0.78rem', color: '#334155' }}>Alex Morgan</td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center', display: 'flex', gap: 6, justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={exportAuditExcel}
+                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #1e3a8a', background: '#1e3a8a', color: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}
+                      >
+                        Excel (.xls)
+                      </button>
                       <button
                         type="button"
                         onClick={exportAuditCSV}
-                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #16a34a', background: '#16a34a', color: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}
+                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontSize: '0.72rem', cursor: 'pointer' }}
                       >
-                        Download CSV
+                        CSV
                       </button>
                     </td>
                   </tr>
