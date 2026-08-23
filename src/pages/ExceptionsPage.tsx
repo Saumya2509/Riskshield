@@ -54,9 +54,6 @@ export default function ExceptionsPage() {
   const [filterCode, setFilterCode] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState<string>('')
   
-  // Track resolved state with resolution metadata
-  const [resolvedMap, setResolvedMap] = useState<Map<string, { method: string; note: string }>>(new Map())
-  
   // Active modal state
   const [solvingItem, setSolvingItem] = useState<MatchResult | null>(null)
   const [activeTab, setActiveTab] = useState<string>('action-1')
@@ -65,6 +62,9 @@ export default function ExceptionsPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
   const allExceptions = report.exceptionList
+  const resolvedMap = ctx.resolvedMap
+  const resolvedCount = Object.keys(resolvedMap).length
+  const allFixed = allExceptions.length > 0 && resolvedCount >= allExceptions.length
 
   const filtered = allExceptions.filter(e => {
     const code = e.exceptionCode || (e.status === 'Partial' ? 'AMOUNT_MISMATCH' : 'NO_MATCH')
@@ -88,7 +88,7 @@ export default function ExceptionsPage() {
   }, {} as Record<string, number>)
 
   const totalOpenAmount = allExceptions
-    .filter(e => !resolvedMap.has(e.record.id))
+    .filter(e => !resolvedMap[e.record.id])
     .reduce((s, e) => s + e.record.amount, 0)
 
   // Open modal handler
@@ -106,11 +106,11 @@ export default function ExceptionsPage() {
     const finalNote = customInput.trim() ? `${methodTitle} — ${customInput}` : `${methodTitle}: ${defaultNote}`
     const recordId = solvingItem.record.id
 
-    // Update local state
-    setResolvedMap(prev => {
-      const next = new Map(prev)
-      next.set(recordId, { method: methodTitle, note: finalNote })
-      return next
+    // Save in global context
+    ctx.applyFix(recordId, {
+      method: methodTitle,
+      note: finalNote,
+      timestamp: new Date().toLocaleTimeString(),
     })
 
     // Cloud background sync
@@ -140,24 +140,92 @@ export default function ExceptionsPage() {
             <div>
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 Exception Resolution Workbench
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
-                  {allExceptions.length - resolvedMap.size} Open Discrepancies
-                </span>
+                {allFixed ? (
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '3px 10px', background: '#dcfce7', color: '#15803d', borderRadius: 999, border: '1px solid #86efac' }}>
+                    ✓ 100% Reconciled (All Fixed)
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
+                    {allExceptions.length - resolvedCount} Open Discrepancies
+                  </span>
+                )}
               </h1>
               <p>
                 Interactive 1-click accounting solutions · Debit/Credit Memos · Suspense GL Allocation · Spot FX adjustments
               </p>
             </div>
-            <div className="d-page-actions">
-              <div style={{ textAlign: 'right', marginRight: 12 }}>
+            <div className="d-page-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'right', marginRight: 8 }}>
                 <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Unresolved Variance Exposure</span>
-                <strong style={{ fontSize: '1.2rem', color: '#dc2626' }}>₹{Math.round(totalOpenAmount).toLocaleString('en-IN')}</strong>
+                <strong style={{ fontSize: '1.2rem', color: totalOpenAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                  ₹{Math.round(totalOpenAmount).toLocaleString('en-IN')}
+                </strong>
               </div>
-              <a href="#/reconciliation" className="d-btn d-btn-primary" style={{ textDecoration: 'none' }}>
-                ↺ Re-Run Batch
-              </a>
+
+              {/* 1-Click Auto-Fix All & Re-Run Button */}
+              {!allFixed ? (
+                <button
+                  type="button"
+                  onClick={() => ctx.autoFixAll()}
+                  className="d-btn d-btn-primary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
+                    fontWeight: 700,
+                  }}
+                >
+                  ⚡ Auto-Fix All &amp; Re-Run (100%)
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => ctx.resetFixes()}
+                  className="d-btn d-btn-ghost"
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  ↺ Reset to Raw (39 Errors)
+                </button>
+              )}
             </div>
           </header>
+
+          {/* 100% Reconciled Celebration Banner */}
+          {allFixed && (
+            <div style={{
+              padding: '14px 20px',
+              background: '#f0fdf4',
+              border: '1.5px solid #86efac',
+              borderRadius: 12,
+              marginBottom: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              boxShadow: '0 2px 6px rgba(22,163,74,0.1)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.6rem' }}>🎉</span>
+                <div>
+                  <strong style={{ fontSize: '0.95rem', color: '#166534', display: 'block' }}>
+                    100.0% Reconciled — All {allExceptions.length} Discrepancies Fixed &amp; Certified!
+                  </strong>
+                  <span style={{ fontSize: '0.78rem', color: '#15803d' }}>
+                    Every exception has been balanced with corresponding Debit Memos, Suspense allocations, FX adjustments, and accrual reversals.
+                  </span>
+                </div>
+              </div>
+              <a
+                href="#/reports"
+                className="d-btn d-btn-primary"
+                style={{ fontSize: '0.78rem', padding: '6px 14px', textDecoration: 'none', background: '#16a34a', borderColor: '#16a34a' }}
+              >
+                Download Certified Audit CSV →
+              </a>
+            </div>
+          )}
 
           {/* Category Filter Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 20 }}>
@@ -174,7 +242,7 @@ export default function ExceptionsPage() {
             >
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>All Exceptions</span>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>{allExceptions.length}</div>
-              <span style={{ fontSize: '0.68rem', color: '#16a34a' }}>{resolvedMap.size} Solved</span>
+              <span style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 700 }}>{resolvedCount} Solved</span>
             </div>
 
             {Object.entries(EXCEPTION_DESCRIPTIONS).map(([code, meta]) => {
@@ -206,7 +274,7 @@ export default function ExceptionsPage() {
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
             <input
               type="text"
-              placeholder="Search by Record ID (e.g. B3-BNK-019), Counterparty, or Description..."
+              placeholder="Search by Record ID (e.g. B2-BNK-019), Counterparty, or Description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
@@ -219,7 +287,7 @@ export default function ExceptionsPage() {
               <div>
                 <h2 className="fin-card-title">Active Exception Records</h2>
                 <p className="fin-card-desc">
-                  Showing {filtered.length} exceptions matching filter · Click <strong>⚡ Solve</strong> on any row to execute accounting action
+                  Showing {filtered.length} exceptions · Click <strong>⚡ Solve</strong> to fix individually, or <strong>⚡ Auto-Fix All</strong> above
                 </p>
               </div>
             </div>
@@ -232,22 +300,22 @@ export default function ExceptionsPage() {
                     <th>ID</th>
                     <th>Source</th>
                     <th>Counterparty</th>
-                    <th>Exception Code</th>
+                    <th>Exception Code &amp; Status</th>
                     <th style={{ textAlign: 'right' }}>Amount</th>
                     <th style={{ textAlign: 'right' }}>Variance (Δ)</th>
-                    <th>Suggested Action</th>
-                    <th style={{ textAlign: 'center', width: 140 }}>Action</th>
+                    <th>Suggested Action / Applied Fix</th>
+                    <th style={{ textAlign: 'center', width: 130 }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(item => {
-                    const resolvedInfo = resolvedMap.get(item.record.id)
+                    const resolvedInfo = resolvedMap[item.record.id]
                     const isResolved = Boolean(resolvedInfo)
                     const code = item.exceptionCode || 'AMOUNT_MISMATCH'
                     const meta = EXCEPTION_DESCRIPTIONS[code] || EXCEPTION_DESCRIPTIONS['NO_MATCH']
 
                     return (
-                      <tr key={item.record.id} style={{ opacity: isResolved ? 0.6 : 1, transition: 'opacity 0.2s', background: isResolved ? '#f0fdf4' : 'transparent' }}>
+                      <tr key={item.record.id} style={{ opacity: isResolved ? 0.75 : 1, transition: 'opacity 0.2s', background: isResolved ? 'rgba(240, 253, 244, 0.6)' : 'transparent' }}>
                         <td style={{ textAlign: 'center' }}>
                           <span style={{ fontSize: '1rem' }}>
                             {isResolved ? '✅' : '⚠️'}
@@ -273,25 +341,41 @@ export default function ExceptionsPage() {
                         </td>
                         <td style={{ color: '#0f172a', fontWeight: 600 }}>{item.record.counterparty}</td>
                         <td>
-                          <span style={{
-                            display: 'inline-block', padding: '2px 8px', borderRadius: 6,
-                            fontSize: '0.72rem', fontWeight: 700,
-                            background: meta.badgeColor.bg, color: meta.badgeColor.text,
-                          }}>
-                            {code}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <span style={{
+                              display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                              fontSize: '0.72rem', fontWeight: 700,
+                              background: meta.badgeColor.bg, color: meta.badgeColor.text,
+                            }}>
+                              {code}
+                            </span>
+                            {/* In bracket fix badge */}
+                            {isResolved && (
+                              <span style={{
+                                display: 'inline-block', padding: '2px 7px', borderRadius: 6,
+                                fontSize: '0.68rem', fontWeight: 700,
+                                background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0',
+                              }}>
+                                [Fixed: {resolvedInfo.method}]
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="fin-mono" style={{ textAlign: 'right' }}>
                           {item.record.currency !== 'INR' ? item.record.currency + ' ' : '₹'}
                           {item.record.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
-                        <td className="fin-mono" style={{ textAlign: 'right', color: item.delta > 0.01 ? '#dc2626' : '#16a34a' }}>
-                          {item.delta > 0.01 ? `−₹${item.delta.toFixed(2)}` : '—'}
+                        <td className="fin-mono" style={{ textAlign: 'right', color: isResolved ? '#16a34a' : (item.delta > 0.01 ? '#dc2626' : '#16a34a') }}>
+                          {isResolved ? (
+                            <span style={{ color: '#16a34a', fontWeight: 700 }}>₹0.00</span>
+                          ) : (
+                            item.delta > 0.01 ? `−₹${item.delta.toFixed(2)}` : '—'
+                          )}
                         </td>
                         <td style={{ fontSize: '0.78rem', color: '#475569', maxWidth: 300 }}>
                           {isResolved ? (
-                            <span style={{ color: '#16a34a', fontWeight: 600 }}>
-                              ✓ {resolvedInfo?.note || 'Solved via journal adjustment'}
+                            <span style={{ color: '#15803d', fontWeight: 600 }}>
+                              ✓ {resolvedInfo?.note}
                             </span>
                           ) : (
                             item.suggestedAction || meta.action
@@ -299,19 +383,22 @@ export default function ExceptionsPage() {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {isResolved ? (
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: 6,
-                              background: '#dcfce7',
-                              color: '#15803d',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}>
-                              ✓ Solved
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSolveModal(item)}
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                background: '#dcfce7',
+                                border: '1px solid #86efac',
+                                color: '#15803d',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Edit Fix
+                            </button>
                           ) : (
                             <button
                               type="button"
