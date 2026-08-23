@@ -28,7 +28,20 @@ export default function ReportsPage() {
 
   // Export JSON Report
   function exportReconJSON() {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(report, null, 2))
+    const enrichedResults = report.results.map(r => {
+      const fix = ctx.resolvedMap[r.record.id]
+      return {
+        ...r,
+        record: {
+          ...r.record,
+          id: fix ? `${r.record.id} (FIX)` : r.record.id,
+        },
+        isFixed: Boolean(fix),
+        resolutionNote: fix ? fix.note : null,
+      }
+    })
+    const payload = { ...report, results: enrichedResults }
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2))
     const link = document.createElement('a')
     link.setAttribute('href', dataStr)
     link.setAttribute('download', `RiskShield_Reconciliation_Report_${report.batchId}.json`)
@@ -39,21 +52,28 @@ export default function ReportsPage() {
 
   // Export Audit CSV
   function exportAuditCSV() {
-    const headers = ['Record ID', 'Bank Source', 'Customer/Vendor', 'Invoice Amount', 'Bank Amount', 'Ledger Amount', 'Status', 'Pass', 'Difference Delta', 'AI Confidence', 'Exception Code', 'Suggested Action']
-    const rows = report.results.map(r => [
-      r.record.id,
-      r.record.source,
-      `"${r.record.counterparty.replace(/"/g, '""')}"`,
-      r.record.amount.toFixed(2),
-      r.record.source === 'BANK' ? r.record.amount.toFixed(2) : (r.record.amount - r.delta).toFixed(2),
-      r.matchedLedger ? r.matchedLedger.amount.toFixed(2) : 'NONE',
-      r.status,
-      r.pass ?? 'N/A',
-      r.delta.toFixed(2),
-      `${r.confidence}%`,
-      r.exceptionCode || 'NONE',
-      `"${(r.suggestedAction || '').replace(/"/g, '""')}"`,
-    ].join(','))
+    const headers = ['Record ID', 'Bank Source', 'Customer/Vendor', 'Invoice Amount', 'Bank Amount', 'Ledger Amount', 'Status', 'Pass', 'Difference Delta', 'AI Confidence', 'Exception Code', 'Suggested Action / Applied Fix']
+    const rows = report.results.map(r => {
+      const fix = ctx.resolvedMap[r.record.id]
+      const idFormatted = fix ? `${r.record.id} (FIX)` : r.record.id
+      const statusFormatted = fix ? `${r.status} (FIXED)` : r.status
+      const actionFormatted = fix ? `[Fixed: ${fix.method}] ${fix.note}` : (r.suggestedAction || '')
+
+      return [
+        idFormatted,
+        r.record.source,
+        `"${r.record.counterparty.replace(/"/g, '""')}"`,
+        r.record.amount.toFixed(2),
+        r.record.source === 'BANK' ? r.record.amount.toFixed(2) : (r.record.amount - r.delta).toFixed(2),
+        r.matchedLedger ? r.matchedLedger.amount.toFixed(2) : 'NONE',
+        statusFormatted,
+        r.pass ?? 'N/A',
+        r.delta.toFixed(2),
+        `${r.confidence}%`,
+        r.exceptionCode || 'NONE',
+        `"${actionFormatted.replace(/"/g, '""')}"`,
+      ].join(',')
+    })
     const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\r\n'))
     const link = document.createElement('a')
     link.setAttribute('href', csvContent)

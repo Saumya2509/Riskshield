@@ -1,4 +1,5 @@
 import type { ReconciliationReport, MatchResult, ExceptionCode } from './reconciliationEngine'
+import { useFinanceContext } from './FinanceContext'
 
 interface Props { report: ReconciliationReport }
 
@@ -26,6 +27,7 @@ function SourceTag({ source }: { source: string }) {
 }
 
 export default function ExceptionList({ report }: Props) {
+  const { resolvedMap } = useFinanceContext()
   const openValue = report.exceptionList.reduce((s, e) => s + e.record.amount, 0)
 
   return (
@@ -65,7 +67,23 @@ export default function ExceptionList({ report }: Props) {
           <tbody>
             {report.exceptionList.map((item: MatchResult) => (
               <tr key={item.record.id}>
-                <td className="fin-mono">{item.record.id}</td>
+                <td className="fin-mono">
+                  <span>{item.record.id}</span>
+                  {resolvedMap[item.record.id] && (
+                    <span style={{
+                      marginLeft: 6,
+                      padding: '1px 5px',
+                      borderRadius: 4,
+                      fontSize: '0.66rem',
+                      fontWeight: 800,
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      border: '1px solid #86efac'
+                    }}>
+                      (FIX)
+                    </span>
+                  )}
+                </td>
                 <td><SourceTag source={item.record.source} /></td>
                 <td>{item.record.counterparty}</td>
                 <td className="fin-mono" style={{ textAlign: 'right' }}>

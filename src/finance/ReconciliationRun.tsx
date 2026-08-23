@@ -406,6 +406,20 @@ export default function ReconciliationRun({ onComplete }: Props) {
                       >
                         {row.record.id}
                       </span>
+                      {ctx.resolvedMap[row.record.id] && (
+                        <span style={{
+                          marginLeft: 6,
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #86efac'
+                        }}>
+                          (FIX)
+                        </span>
+                      )}
                     </td>
 
                     {/* 2. Bank Source */}

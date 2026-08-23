@@ -9,7 +9,7 @@ function reconBadgeStyle(status: string): { bg: string; color: string } {
 }
 
 export default function TransactionTable() {
-  const { report, mlResult } = useFinanceContext()
+  const { report, mlResult, resolvedMap } = useFinanceContext()
   const showFinance = !!(report && mlResult)
   const [actionedIds, setActionedIds] = useState<Set<string>>(new Set())
 
@@ -107,6 +107,20 @@ export default function TransactionTable() {
                       >
                         {row.record.id}
                       </span>
+                      {resolvedMap[row.record.id] && (
+                        <span style={{
+                          marginLeft: 6,
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #86efac'
+                        }}>
+                          (FIX)
+                        </span>
+                      )}
                     </td>
 
                     {/* 2. Bank Source */}
