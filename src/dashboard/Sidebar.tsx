@@ -9,7 +9,6 @@ export const SIDEBAR_NAV = [
   { id: 'reconciliation', label: '1. Multi-Source Recon',      href: '#/reconciliation', icon: '🔄' },
   { id: 'exceptions',     label: '2. Exception Workbench',      href: '#/exceptions',     icon: '⚠️' },
   { id: 'cash-forecast',  label: '3. Forward Cash Forecaster',  href: '#/cash-forecast',  icon: '📈' },
-  { id: 'tax-matcher',    label: '4. Tax-Line Matcher',        href: '#/tax-matcher',    icon: '📑' },
   { id: 'reports',        label: 'Reports & Downloads',         href: '#/reports',        icon: '📄' },
   { id: 'ai-assistant',   label: 'Settlement Q&A Agent',        href: '#/ai-assistant',   icon: '🤖' },
   { id: 'settings',       label: 'Settings & Rules',            href: '#/settings',       icon: '⚙️' },
