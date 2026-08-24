@@ -294,7 +294,7 @@ export default function ReconciliationRun({ onComplete }: Props) {
               Upload Financial Reconciliation CSV
             </h3>
             <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px', lineHeight: 1.5 }}>
-              Click below to upload any CSV file from your computer (e.g. from the <code>public/</code> folder) containing BANK statements, LEDGER entries, and INVOICES.
+              Upload your financial transaction dataset containing BANK statements, LEDGER entries, and INVOICES for automated 3-way reconciliation.
             </p>
             <button
               className="fin-run-btn"
@@ -306,10 +306,10 @@ export default function ReconciliationRun({ onComplete }: Props) {
             </button>
           </div>
 
-          {/* 5 Pre-Generated 500-record CSV Batches in public/ */}
+          {/* Pre-Generated 500-record Enterprise Datasets */}
           <div style={{ maxWidth: 780, margin: '0 auto' }}>
             <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94a3b8', margin: '0 0 12px', textAlign: 'center' }}>
-              5 Pre-Generated 500-Record CSV Batches (Saved in <code>public/</code> folder)
+              Pre-Configured Enterprise Reconciliation Batches
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 }}>
               {BATCH_INFO.map((b) => (
@@ -337,9 +337,9 @@ export default function ReconciliationRun({ onComplete }: Props) {
                     <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>
                       {b.name.split('—')[1]?.trim() || b.name}
                     </div>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>
-                      <code>public/{b.filename}</code>
-                    </div>
+                    {/* <div style={{ fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>
+                     <code>public/{b.filename}</code>
+                    </div> */}
                   </div>
                   <button
                     className="fin-run-btn fin-run-btn--secondary"
