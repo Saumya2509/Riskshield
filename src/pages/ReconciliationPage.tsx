@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import ReconciliationRun from '../finance/ReconciliationRun'
@@ -19,6 +19,14 @@ export default function ReconciliationPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const ctx = useFinanceContext()
   const [report, setReport] = useState<ReconciliationReport | null>(ctx.report)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
 
   function handleComplete(r: ReconciliationReport) {
     setReport(r)

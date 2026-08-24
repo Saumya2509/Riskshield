@@ -24,8 +24,17 @@ export default function SettlementQAPanel({ report }: Props) {
   const [thinking, setThinking] = useState(false)
   const [showThoughts, setShowThoughts] = useState<Record<number, boolean>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
+  const isFirstMount = useRef(true)
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, thinking])
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false
+      return
+    }
+    if (bottomRef.current?.parentElement) {
+      bottomRef.current.parentElement.scrollTop = bottomRef.current.parentElement.scrollHeight
+    }
+  }, [messages, thinking])
 
   function send(q: string) {
     if (!q.trim() || thinking) return

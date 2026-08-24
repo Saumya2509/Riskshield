@@ -41,7 +41,14 @@ export default function App() {
   const [view, setView] = useState<View>(currentView)
 
   useEffect(() => {
-    const onHash = () => setView(currentView())
+    const onHash = () => {
+      setView(currentView())
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+      const mainEl = document.querySelector('.d-main')
+      if (mainEl) mainEl.scrollTop = 0
+    }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
