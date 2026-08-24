@@ -6,7 +6,6 @@ import { runReconciliation, type MatchResult, type MatchPass, type Reconciliatio
 import { runMLScoring } from '../finance/mlScorer'
 import { runTaxLineMatcher } from '../finance/taxLineMatcher'
 import { buildForecast } from '../finance/cashForecast'
-import TaxLineMatcherPanel from '../finance/TaxLineMatcherPanel'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
 
@@ -69,30 +68,6 @@ export default function ReportsPage() {
 
   const [signedOff, setSignedOff] = useState(false)
   const fixedCount = Object.keys(ctx.resolvedMap).length
-
-  // Export JSON Report
-  function exportReconJSON() {
-    const enrichedResults = report.results.map(r => {
-      const fix = ctx.resolvedMap[r.record.id]
-      return {
-        ...r,
-        record: {
-          ...r.record,
-          id: fix ? `${r.record.id} (FIX)` : r.record.id,
-        },
-        isFixed: Boolean(fix),
-        resolutionNote: fix ? fix.note : null,
-      }
-    })
-    const payload = { ...report, results: enrichedResults, fixedCount }
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2))
-    const link = document.createElement('a')
-    link.setAttribute('href', dataStr)
-    link.setAttribute('download', `RiskShield_Reconciliation_Report_${report.batchId}.json`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
 
   // Export Styled Excel (.xls) with Colored Headers and Formatting
   function exportAuditExcel() {
@@ -181,29 +156,6 @@ export default function ReportsPage() {
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.setAttribute('download', `RiskShield_Audit_Trail_${report.batchId}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  // Export Tax CSV
-  function exportTaxCSV() {
-    const headers = ['Record ID', 'GL Code', 'Counterparty', 'Tax Category', 'Jurisdiction', 'Amount', 'Tax Rate', 'Tax Liability', 'Risk Level']
-    const rows = taxSummary.lineItems.map(t => [
-      t.recordId,
-      t.glCode,
-      `"${t.counterparty.replace(/"/g, '""')}"`,
-      t.taxCategory,
-      t.taxJurisdiction,
-      t.amount.toFixed(2),
-      `${(t.taxRate * 100).toFixed(0)}%`,
-      t.taxAmount.toFixed(2),
-      t.riskLevel,
-    ].join(','))
-    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\r\n'))
-    const link = document.createElement('a')
-    link.setAttribute('href', csvContent)
-    link.setAttribute('download', `RiskShield_Tax_Liability_Report_${report.batchId}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -484,9 +436,9 @@ export default function ReportsPage() {
                   <div style={{ fontSize: '0.68rem', color: '#64748b' }}>6-feature vector</div>
                 </div>
                 <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Tax Line Classifier</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#16a34a' }}>{taxSummary.processingTimeMs}ms</div>
-                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>GL automated mapping</div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Automation Rate</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#16a34a' }}>{report.matchRate.toFixed(1)}%</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Straight-through flow</div>
                 </div>
               </div>
             </div>
@@ -601,9 +553,6 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* ── 8.5 TAX-LINE MATCHER & GL CLASSIFICATION ──────────────────────── */}
-          <TaxLineMatcherPanel taxSummary={taxSummary} />
-
           {/* ── 9. RECENT REPORTS & EXPORT BUTTONS ──────────────────────────────── */}
           <section className="fin-card" style={{ padding: '22px 24px' }} aria-label="Recent Reports and Exports">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
@@ -612,35 +561,19 @@ export default function ReportsPage() {
                   9. Recent Reports &amp; Export Center
                 </span>
                 <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                  Download certified audit packages, JSON data streams, and tax liability statements
+                  Download certified audit packages in Styled Excel (.xls) or UTF-8 CSV formats
                 </p>
               </div>
 
-              {/* Export Button Toolbar */}
+              {/* Export Button Toolbar — ONLY EXCEL (.xls) AND CSV (.csv) */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={exportReconJSON}
-                  className="d-btn d-btn-ghost"
-                  style={{ fontSize: '0.82rem', height: 36 }}
-                >
-                  📥 Export JSON
-                </button>
-                <button
-                  type="button"
-                  onClick={exportTaxCSV}
-                  className="d-btn d-btn-ghost"
-                  style={{ fontSize: '0.82rem', height: 36 }}
-                >
-                  📄 Download Tax CSV
-                </button>
                 <button
                   type="button"
                   onClick={exportAuditCSV}
                   className="d-btn d-btn-ghost"
                   style={{ fontSize: '0.82rem', height: 36 }}
                 >
-                  📥 Download Clean CSV
+                  📥 Download Audit CSV
                 </button>
                 <button
                   type="button"
@@ -716,13 +649,20 @@ export default function ReportsPage() {
                       <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 650 }}>{log.cleared}</td>
                       <td><span className="fin-tag fin-tag--safe">✓ {log.status}</span></td>
                       <td style={{ fontSize: '0.78rem', color: '#334155' }}>{log.signedBy}</td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', display: 'flex', gap: 6, justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={exportAuditExcel}
+                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #1e3a8a', background: '#1e3a8a', color: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Excel (.xls)
+                        </button>
                         <button
                           type="button"
                           onClick={exportAuditCSV}
-                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', fontSize: '0.72rem', cursor: 'pointer' }}
+                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontSize: '0.72rem', cursor: 'pointer' }}
                         >
-                          Download
+                          CSV
                         </button>
                       </td>
                     </tr>
