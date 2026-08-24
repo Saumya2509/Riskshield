@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { TaxSummary, TaxCategory, TaxLineItem } from './taxLineMatcher'
-import { TAX_REGIMES, optimizeTaxShield } from './taxLineMatcher'
+import { TAX_REGIMES } from './taxLineMatcher'
 
 interface Props {
   taxSummary: TaxSummary
@@ -23,17 +23,17 @@ function riskBadge(level: 'Low' | 'Medium' | 'High') {
   if (level === 'Medium') {
     return <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 650, background: '#fef3c7', color: '#92400e' }}>Medium</span>
   }
-  return <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 650, background: '#fee2e2', color: '#991b1b' }}>High Risk</span>
+  return <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, background: '#fee2e2', color: '#991b1b' }}>High Risk</span>
 }
 
 export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: Props) {
-  const [currentSummary, setCurrentSummary] = useState<TaxSummary>(initialTaxSummary)
+  const [currentSummary] = useState<TaxSummary>(initialTaxSummary)
   const [selectedRegime, setSelectedRegime] = useState<'115BAA' | 'OLD' | '115BAB'>('115BAA')
   const [filterCat, setFilterCat] = useState<string>('ALL')
   const [filterRisk, setFilterRisk] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [showJurisdictions, setShowJurisdictions] = useState<boolean>(false)
-  const [optToast, setOptToast] = useState<string | null>(null)
+  const [defenseToast, setDefenseToast] = useState<string | null>(null)
 
   // Map of defended/resolved statutory notices
   const [defendedNotices, setDefendedNotices] = useState<Record<string, { method: string; certNumber: string; penaltyMitigated: number; timestamp: string }>>({})
@@ -73,14 +73,6 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
     })
   }, [currentSummary.lineItems, filterCat, filterRisk, searchQuery])
 
-  // Run 1-Click AI Optimization
-  function handleRunAIOptimization() {
-    const optimized = optimizeTaxShield(currentSummary)
-    setCurrentSummary(optimized)
-    setOptToast('⚡ AI Tax Shield Optimization Executed: 100% of transactions mapped to verified Section 37(1) deductible GL accounts.')
-    setTimeout(() => setOptToast(null), 6000)
-  }
-
   // Execute Statutory Dispute Resolution
   function handleConfirmDefense() {
     if (!disputeItem) return
@@ -108,8 +100,8 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
 
       setIsExecutingDefense(false)
       setDisputeItem(null)
-      setOptToast(`✓ Statutory Dispute Solved for ${disputeItem.recordId}! Penalty risk of ₹${disputeItem.potentialPenaltyExposure.toLocaleString('en-IN')} mitigated.`)
-      setTimeout(() => setOptToast(null), 6000)
+      setDefenseToast(`✓ Statutory Dispute Solved for ${disputeItem.recordId}! Penalty risk of ₹${disputeItem.potentialPenaltyExposure.toLocaleString('en-IN')} mitigated.`)
+      setTimeout(() => setDefenseToast(null), 6000)
     }, 600)
   }
 
@@ -236,26 +228,6 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* 1-CLICK AI TAX SHIELD OPTIMIZER */}
-          <button
-            onClick={handleRunAIOptimization}
-            className="d-btn d-btn-primary"
-            style={{
-              fontSize: '0.82rem',
-              height: 36,
-              background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-              borderColor: '#6d28d9',
-              boxShadow: '0 2px 8px rgba(124,58,237,0.3)',
-              color: '#fff',
-              fontWeight: 700,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            ⚡ AI Auto-Optimize Tax Shield
-          </button>
-
           <button
             onClick={() => setShowJurisdictions(!showJurisdictions)}
             className="fin-btn fin-btn-secondary"
@@ -289,24 +261,24 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
         </div>
       </div>
 
-      {/* Toast Notification */}
-      {optToast && (
+      {/* Defense Success Toast Notification */}
+      {defenseToast && (
         <div style={{
           padding: '12px 18px',
-          background: '#faf5ff',
-          border: '1px solid #d8b4fe',
+          background: '#f0fdf4',
+          border: '1px solid #86efac',
           borderRadius: 10,
           margin: '0 20px 16px',
-          color: '#6b21a8',
+          color: '#166534',
           fontSize: '0.86rem',
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          boxShadow: '0 2px 6px rgba(124,58,237,0.1)'
+          boxShadow: '0 2px 6px rgba(22,163,74,0.1)'
         }}>
-          <span style={{ fontSize: '1.2rem' }}>✨</span>
-          <span>{optToast}</span>
+          <span style={{ fontSize: '1.2rem' }}>🏛️</span>
+          <span>{defenseToast}</span>
         </div>
       )}
 
