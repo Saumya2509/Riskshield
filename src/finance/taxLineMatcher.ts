@@ -515,3 +515,32 @@ export function optimizeTaxShield(summary: TaxSummary): TaxSummary {
     lineItems: optimizedItems,
   }
 }
+
+// ── Zero-State Empty Tax Summary Helper ──────────────────────────────────────
+export function getEmptyTaxSummary(): TaxSummary {
+  return {
+    totalGrossRevenue: 0,
+    totalDeductions: 0,
+    netTaxableIncome: 0,
+    estimatedTaxLiability: 0,
+    totalTaxSavings: 0,
+    effectiveTaxRate: 0,
+    totalForeignWithholding: 0,
+    unclassifiedCount: 0,
+    unclassifiedAmount: 0,
+    highRiskCount: 0,
+    lineItems: [],
+    categoryBreakdown: [
+      { category: 'Revenue', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Revenue'] },
+      { category: 'Cost of Revenue', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Cost of Revenue'] },
+      { category: 'Operating Expense', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Operating Expense'] },
+      { category: 'Capital Expenditure', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Capital Expenditure'] },
+      { category: 'Foreign Withholding', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Foreign Withholding'] },
+      { category: 'Exempt', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Exempt'] },
+      { category: 'Unclassified', count: 0, percentage: 0, totalAmount: 0, taxAmount: 0, taxSavings: 0, glCode: GL_CODES['Unclassified'] },
+    ],
+    jurisdictionBreakdown: [],
+    automationRate: 0,
+    processingTimeMs: 0,
+  }
+}

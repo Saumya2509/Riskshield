@@ -389,89 +389,108 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
         </select>
       </div>
 
-      {/* ─── Line Items Table ──────────────────────────────────────────────── */}
-      <div className="fin-rec-wrap" style={{ maxHeight: 520, margin: '0 20px 20px' }}>
-        <table className="fin-tbl">
-          <thead>
-            <tr>
-              <th>Record ID</th>
-              <th>GL Code</th>
-              <th>Counterparty</th>
-              <th>Category</th>
-              <th>Section Ref</th>
-              <th style={{ textAlign: 'right' }}>Amount</th>
-              <th style={{ textAlign: 'right' }}>Tax Shield (Saved)</th>
-              <th>GST ITC Status</th>
-              <th>Risk</th>
-              <th style={{ textAlign: 'center', width: 120 }}>AI Tax Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredItems.slice(0, 100).map(item => {
-              const theme = CATEGORY_THEME[item.taxCategory]
+      {/* ─── Line Items Table / Zero State ───────────────────────────────── */}
+      {currentSummary.lineItems.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b', margin: '0 20px 20px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📑</div>
+          <h3 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 }}>
+            No Active Tax Records Found
+          </h3>
+          <p style={{ margin: '0 0 20px', fontSize: '0.86rem', maxWidth: 460, marginInline: 'auto', lineHeight: 1.6 }}>
+            Awaiting batch reconciliation. Ingest your CSV files or select a pre-loaded enterprise batch in Multi-Source Recon to generate corporate tax and GST classification line items.
+          </p>
+          <a
+            href="#/reconciliation"
+            className="d-btn d-btn-primary"
+            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 22px', fontSize: '0.88rem', fontWeight: 700 }}
+          >
+            🔄 Go to Multi-Source Recon
+          </a>
+        </div>
+      ) : (
+        <div className="fin-rec-wrap" style={{ maxHeight: 520, margin: '0 20px 20px' }}>
+          <table className="fin-tbl">
+            <thead>
+              <tr>
+                <th>Record ID</th>
+                <th>GL Code</th>
+                <th>Counterparty</th>
+                <th>Category</th>
+                <th>Section Ref</th>
+                <th style={{ textAlign: 'right' }}>Amount</th>
+                <th style={{ textAlign: 'right' }}>Tax Shield (Saved)</th>
+                <th>GST ITC Status</th>
+                <th>Risk</th>
+                <th style={{ textAlign: 'center', width: 120 }}>AI Tax Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredItems.slice(0, 100).map(item => {
+                const theme = CATEGORY_THEME[item.taxCategory]
 
-              return (
-                <tr key={item.recordId}>
-                  <td className="fin-mono">
-                    <span style={{ color: '#2563eb', fontWeight: 700 }}>{item.recordId}</span>
-                  </td>
-                  <td className="fin-mono" style={{ fontWeight: 700, color: '#475569' }}>
-                    {item.glCode}
-                  </td>
-                  <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.counterparty}</td>
-                  <td>
-                    <span style={{
-                      padding: '2px 8px',
-                      borderRadius: 6,
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      background: theme.bg,
-                      color: theme.text,
-                      border: `1px solid ${theme.border}`
-                    }}>
-                      {item.taxCategory}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: '0.74rem', color: '#1e40af', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.sectionRef}>
-                    {item.sectionRef.split('-')[0]}
-                  </td>
-                  <td className="fin-mono" style={{ textAlign: 'right' }}>
-                    ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="fin-mono" style={{ textAlign: 'right', color: item.taxSavings > 0 ? '#16a34a' : '#64748b', fontWeight: 700 }}>
-                    {item.taxSavings > 0 ? `+₹${item.taxSavings.toFixed(2)}` : '—'}
-                  </td>
-                  <td style={{ fontSize: '0.72rem', color: item.itcEligibility.includes('100%') ? '#16a34a' : '#64748b' }}>
-                    {item.itcEligibility.split(' ')[0]} {item.itcEligibility.split(' ')[1] || ''}
-                  </td>
-                  <td>{riskBadge(item.riskLevel)}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => setAuditModalItem(item)}
-                      style={{
-                        padding: '4px 10px',
+                return (
+                  <tr key={item.recordId}>
+                    <td className="fin-mono">
+                      <span style={{ color: '#2563eb', fontWeight: 700 }}>{item.recordId}</span>
+                    </td>
+                    <td className="fin-mono" style={{ fontWeight: 700, color: '#475569' }}>
+                      {item.glCode}
+                    </td>
+                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.counterparty}</td>
+                    <td>
+                      <span style={{
+                        padding: '2px 8px',
                         borderRadius: 6,
-                        border: '1px solid #7c3aed',
-                        background: '#f5f3ff',
-                        color: '#6d28d9',
                         fontSize: '0.72rem',
                         fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
-                    >
-                      ⚡ AI Audit
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                        background: theme.bg,
+                        color: theme.text,
+                        border: `1px solid ${theme.border}`
+                      }}>
+                        {item.taxCategory}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '0.74rem', color: '#1e40af', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.sectionRef}>
+                      {item.sectionRef.split('-')[0]}
+                    </td>
+                    <td className="fin-mono" style={{ textAlign: 'right' }}>
+                      ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="fin-mono" style={{ textAlign: 'right', color: item.taxSavings > 0 ? '#16a34a' : '#64748b', fontWeight: 700 }}>
+                      {item.taxSavings > 0 ? `+₹${item.taxSavings.toFixed(2)}` : '—'}
+                    </td>
+                    <td style={{ fontSize: '0.72rem', color: item.itcEligibility.includes('100%') ? '#16a34a' : '#64748b' }}>
+                      {item.itcEligibility.split(' ')[0]} {item.itcEligibility.split(' ')[1] || ''}
+                    </td>
+                    <td>{riskBadge(item.riskLevel)}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAuditModalItem(item)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          border: '1px solid #7c3aed',
+                          background: '#f5f3ff',
+                          color: '#6d28d9',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        ⚡ AI Audit
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ─── INTERACTIVE AI TAX AUDIT MODAL ────────────────────────────────── */}
       {auditModalItem && (

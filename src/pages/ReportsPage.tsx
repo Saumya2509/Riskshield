@@ -2,9 +2,9 @@ import { useState } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
-import { runReconciliation, type MatchResult, type MatchPass, type ReconciliationReport } from '../finance/reconciliationEngine'
+import { type MatchResult, type MatchPass, type ReconciliationReport } from '../finance/reconciliationEngine'
 import { runMLScoring } from '../finance/mlScorer'
-import { runTaxLineMatcher } from '../finance/taxLineMatcher'
+import { runTaxLineMatcher, getEmptyTaxSummary } from '../finance/taxLineMatcher'
 import { buildForecast } from '../finance/cashForecast'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
@@ -18,25 +18,27 @@ const RECENT_AUDIT_LOGS = [
 export default function ReportsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const ctx = useFinanceContext()
-  const rawReport = ctx.report || runReconciliation()
+  const rawReport = ctx.report
 
   // Dynamically compute effective results with all applied fixes from resolvedMap
-  const effectiveResults: MatchResult[] = rawReport.results.map((r: MatchResult) => {
-    const fix = ctx.resolvedMap[r.record.id]
-    if (!fix) return r
+  const effectiveResults: MatchResult[] = rawReport
+    ? rawReport.results.map((r: MatchResult) => {
+        const fix = ctx.resolvedMap[r.record.id]
+        if (!fix) return r
 
-    return {
-      ...r,
-      status: 'Exact' as const,
-      pass: (r.pass || 1) as MatchPass,
-      confidence: 100,
-      delta: 0,
-      deltaPct: 0,
-      exceptionCode: null,
-      exceptionReason: `Resolved via ${fix.method}. ${fix.note}`,
-      suggestedAction: `[Fixed: ${fix.method}] ${fix.note}`,
-    }
-  })
+        return {
+          ...r,
+          status: 'Exact' as const,
+          pass: (r.pass || 1) as MatchPass,
+          confidence: 100,
+          delta: 0,
+          deltaPct: 0,
+          exceptionCode: null,
+          exceptionReason: `Resolved via ${fix.method}. ${fix.note}`,
+          suggestedAction: `[Fixed: ${fix.method}] ${fix.note}`,
+        }
+      })
+    : []
 
   const exactCount = effectiveResults.filter(r => r.status === 'Exact').length
   const fuzzyCount = effectiveResults.filter(r => r.status === 'Fuzzy').length
@@ -44,33 +46,68 @@ export default function ReportsPage() {
   const exceptionList = effectiveResults.filter(r => r.status === 'Exception')
   const clearedAmount = effectiveResults.filter(r => r.status === 'Exact' || r.status === 'Fuzzy').reduce((s, r) => s + r.record.amount, 0)
   const openAmount = exceptionList.reduce((s, r) => s + r.delta, 0)
-  const totalAttempts = rawReport.totalAttempts || effectiveResults.length
-  const matchRate = totalAttempts > 0 ? ((totalAttempts - exceptionList.length) / totalAttempts) * 100 : 100
-  const accuracy = Math.min(100, ((exactCount + fuzzyCount) / Math.max(1, totalAttempts)) * 100)
+  const totalAttempts = rawReport ? (rawReport.totalAttempts || effectiveResults.length) : 0
+  const matchRate = totalAttempts > 0 ? ((totalAttempts - exceptionList.length) / totalAttempts) * 100 : 0
+  const accuracy = totalAttempts > 0 ? Math.min(100, ((exactCount + fuzzyCount) / totalAttempts) * 100) : 0
 
-  const report: ReconciliationReport = {
-    ...rawReport,
-    results: effectiveResults,
-    exactMatches: exactCount,
-    fuzzyMatches: fuzzyCount,
-    partialMatches: partialCount,
-    exceptions: exceptionList.length,
-    exceptionList: exceptionList,
-    clearedAmount,
-    openAmount,
-    matchRate,
-    accuracy,
-  }
+  const report: ReconciliationReport = rawReport
+    ? {
+        ...rawReport,
+        results: effectiveResults,
+        exactMatches: exactCount,
+        fuzzyMatches: fuzzyCount,
+        partialMatches: partialCount,
+        exceptions: exceptionList.length,
+        exceptionList: exceptionList,
+        clearedAmount,
+        openAmount,
+        matchRate,
+        accuracy,
+      }
+    : {
+        batchId: 'AWAITING-INGEST',
+        period: 'Pending Ingestion',
+        totalRecords: 0,
+        totalAttempts: 0,
+        bankAttempts: 0,
+        invoiceAttempts: 0,
+        orphanLedgers: 0,
+        exactMatches: 0,
+        fuzzyMatches: 0,
+        partialMatches: 0,
+        exceptions: 0,
+        matchRate: 0,
+        partialRate: 0,
+        exceptionRate: 0,
+        clearedAmount: 0,
+        openAmount: 0,
+        threeWayMatches: 0,
+        groundTruthChecked: 0,
+        correctMatches: 0,
+        accuracy: 0,
+        runTimeMs: 0,
+        passStats: [
+          { pass: 1, label: 'Exact Match', matched: 0, running: 0 },
+          { pass: 2, label: 'Fuzzy Match', matched: 0, running: 0 },
+          { pass: 3, label: 'Partial Match', matched: 0, running: 0 },
+        ],
+        results: [],
+        exceptionList: [],
+      }
 
-  const mlResult = ctx.mlResult || runMLScoring(report.results.map(r => r.record))
-  const taxSummary = runTaxLineMatcher(report)
-  const forecast = buildForecast(report)
+  const mlResult = rawReport ? (ctx.mlResult || runMLScoring(report.results.map(r => r.record))) : null
+  const taxSummary = rawReport ? runTaxLineMatcher(report) : getEmptyTaxSummary()
+  const forecast = rawReport
+    ? buildForecast(report)
+    : { openingBalance: 0, clearedInflow: 0, totalOutflow: 0, expectedClosing: 0, dailyForecasts: [] }
 
   const [signedOff, setSignedOff] = useState(false)
   const fixedCount = Object.keys(ctx.resolvedMap).length
 
   // Export Styled Excel (.xls) with Colored Headers and Formatting
   function exportAuditExcel() {
+    if (!rawReport || report.results.length === 0) return
+
     const headers = ['Record ID', 'Bank Source', 'Customer/Vendor', 'Invoice Amount (₹)', 'Bank Amount (₹)', 'Ledger Amount (₹)', 'Status', 'Pass Tier', 'Variance Delta (₹)', 'AI Confidence', 'Exception Code', 'Suggested Action / Applied Fix']
 
     const headerHtml = headers.map(h => `<th style="background-color: #1e3a8a; color: #ffffff; font-family: Arial, sans-serif; font-size: 11pt; font-weight: bold; padding: 8px 12px; border: 1px solid #334155; text-align: left;">${h}</th>`).join('')
@@ -128,6 +165,8 @@ export default function ReportsPage() {
 
   // Export Clean Audit CSV with UTF-8 BOM for Excel
   function exportAuditCSV() {
+    if (!rawReport || report.results.length === 0) return
+
     const headers = ['Record ID', 'Bank Source', 'Customer/Vendor', 'Invoice Amount', 'Bank Amount', 'Ledger Amount', 'Status', 'Pass', 'Difference Delta', 'AI Confidence', 'Exception Code', 'Suggested Action / Applied Fix']
     const rows = report.results.map(r => {
       const fix = ctx.resolvedMap[r.record.id]
@@ -150,7 +189,6 @@ export default function ReportsPage() {
         `"${actionFormatted.replace(/"/g, '""')}"`,
       ].join(',')
     })
-    // Add UTF-8 BOM (\uFEFF) so Excel renders rupee and special characters cleanly
     const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -188,25 +226,62 @@ export default function ReportsPage() {
             <div>
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 Executive Financial Reports
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 9px', background: '#dcfce7', color: '#15803d', borderRadius: 999 }}>
-                  {signedOff ? '✓ Certified Sign-Off' : (fixedCount > 0 ? `✓ Audit Updated (${fixedCount} Fixes Applied)` : 'Audit Ready')}
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 9px', background: rawReport ? '#dcfce7' : '#f1f5f9', color: rawReport ? '#15803d' : '#64748b', borderRadius: 999 }}>
+                  {rawReport ? (signedOff ? '✓ Certified Sign-Off' : (fixedCount > 0 ? `✓ Audit Updated (${fixedCount} Fixes Applied)` : 'Audit Ready')) : 'Zero State (Awaiting Ingest)'}
                 </span>
               </h1>
               <p>
                 Comprehensive reconciliation analytics · Performance metrics · Exception breakdown · Cash &amp; AI intelligence
               </p>
             </div>
-            <div className="d-page-actions">
-              <button
-                type="button"
-                onClick={() => setSignedOff(!signedOff)}
-                className={`d-btn ${signedOff ? 'd-btn-ghost' : 'd-btn-primary'}`}
-                style={{ fontSize: '0.84rem' }}
-              >
-                {signedOff ? '✓ Controller Certified' : '🖋️ Certify & Sign Off'}
-              </button>
-            </div>
+            {rawReport && (
+              <div className="d-page-actions">
+                <button
+                  type="button"
+                  onClick={() => setSignedOff(!signedOff)}
+                  className={`d-btn ${signedOff ? 'd-btn-ghost' : 'd-btn-primary'}`}
+                  style={{ fontSize: '0.84rem' }}
+                >
+                  {signedOff ? '✓ Controller Certified' : '🖋️ Certify & Sign Off'}
+                </button>
+              </div>
+            )}
           </header>
+
+          {/* Zero-State Banner for New Users */}
+          {!rawReport && (
+            <div style={{
+              padding: '16px 20px',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: 12,
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.8rem' }}>📊</span>
+                <div>
+                  <strong style={{ fontSize: '0.94rem', color: '#1e40af', display: 'block' }}>
+                    No Active Reconciliation Run Loaded
+                  </strong>
+                  <span style={{ fontSize: '0.8rem', color: '#1d4ed8' }}>
+                    Executive KPI metrics and audit schedules currently display zero baseline state. Ingest a dataset in Multi-Source Recon to generate live audit trails.
+                  </span>
+                </div>
+              </div>
+              <a
+                href="#/reconciliation"
+                className="d-btn d-btn-primary"
+                style={{ textDecoration: 'none', fontSize: '0.82rem', padding: '8px 16px', whiteSpace: 'nowrap' }}
+              >
+                🔄 Go to Multi-Source Recon
+              </a>
+            </div>
+          )}
 
           {/* ── 1. REPORT SUMMARY (KPI CARDS) ──────────────────────────────────── */}
           <section className="fin-card" style={{ padding: '20px 24px' }} aria-label="Report Summary">
@@ -215,7 +290,7 @@ export default function ReportsPage() {
                 1. Report Summary (Executive KPIs)
               </span>
               <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                Batch {report.batchId} · {fixedCount > 0 ? `${fixedCount} Controller Fixes Applied` : 'Raw Batch Run'} · Generated {new Date().toLocaleTimeString()}
+                {rawReport ? `Batch ${report.batchId} · ${fixedCount > 0 ? `${fixedCount} Controller Fixes Applied` : 'Raw Batch Run'} · Generated ${new Date().toLocaleTimeString()}` : 'Awaiting Ingestion'}
               </span>
             </div>
 
@@ -295,23 +370,23 @@ export default function ReportsPage() {
                     <td style={{ fontWeight: 700, color: '#16a34a' }}>Pass 1 (Exact &amp; Fixed)</td>
                     <td>Exact Reference ID + Currency + Amount (±₹0.01)</td>
                     <td className="fin-mono" style={{ textAlign: 'right' }}>{report.exactMatches}</td>
-                    <td className="fin-mono" style={{ textAlign: 'right' }}>{((report.exactMatches / report.totalAttempts) * 100).toFixed(1)}%</td>
+                    <td className="fin-mono" style={{ textAlign: 'right' }}>{report.totalAttempts > 0 ? ((report.exactMatches / report.totalAttempts) * 100).toFixed(1) : '0.0'}%</td>
                     <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 650 }}>₹{Math.round(report.clearedAmount * 0.75).toLocaleString('en-IN')}</td>
-                    <td><span className="fin-tag fin-tag--safe">Verified</span></td>
+                    <td><span className="fin-tag fin-tag--safe">{report.exactMatches > 0 ? 'Verified' : 'Ready'}</span></td>
                   </tr>
                   <tr>
                     <td style={{ fontWeight: 700, color: '#2563eb' }}>Pass 2 (Fuzzy)</td>
                     <td>Fuzzy Tolerance (±1% Fee Delta, ±2 Day Settlement Window)</td>
                     <td className="fin-mono" style={{ textAlign: 'right' }}>{report.fuzzyMatches}</td>
-                    <td className="fin-mono" style={{ textAlign: 'right' }}>{((report.fuzzyMatches / report.totalAttempts) * 100).toFixed(1)}%</td>
+                    <td className="fin-mono" style={{ textAlign: 'right' }}>{report.totalAttempts > 0 ? ((report.fuzzyMatches / report.totalAttempts) * 100).toFixed(1) : '0.0'}%</td>
                     <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 650 }}>₹{Math.round(report.clearedAmount * 0.25).toLocaleString('en-IN')}</td>
-                    <td><span className="fin-tag fin-tag--fuzzy">Verified</span></td>
+                    <td><span className="fin-tag fin-tag--fuzzy">{report.fuzzyMatches > 0 ? 'Verified' : 'Ready'}</span></td>
                   </tr>
                   <tr>
                     <td style={{ fontWeight: 700, color: '#7c3aed' }}>Pass 3 (Partial)</td>
                     <td>Short Pays &amp; Dispute Discrepancies (1%–20% Range)</td>
                     <td className="fin-mono" style={{ textAlign: 'right' }}>{report.partialMatches}</td>
-                    <td className="fin-mono" style={{ textAlign: 'right' }}>{((report.partialMatches / report.totalAttempts) * 100).toFixed(1)}%</td>
+                    <td className="fin-mono" style={{ textAlign: 'right' }}>{report.totalAttempts > 0 ? ((report.partialMatches / report.totalAttempts) * 100).toFixed(1) : '0.0'}%</td>
                     <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 650 }}>₹{Math.round(report.openAmount).toLocaleString('en-IN')}</td>
                     <td>
                       {report.partialMatches > 0 ? (
@@ -364,10 +439,10 @@ export default function ReportsPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 4 }}>
                     <span style={{ fontWeight: 650 }}>General Ledger ERP Bookings (LEDGER)</span>
-                    <span className="fin-mono">{report.orphanLedgers} orphans · 100.0% mapped</span>
+                    <span className="fin-mono">{report.orphanLedgers} orphans · {rawReport ? '100.0%' : '0.0%'} mapped</span>
                   </div>
                   <div style={{ height: 8, width: '100%', background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: '100%', background: '#7c3aed' }} />
+                    <div style={{ height: '100%', width: rawReport ? '100%' : '0%', background: '#7c3aed' }} />
                   </div>
                 </div>
               </div>
@@ -387,7 +462,7 @@ export default function ReportsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
                 {report.exceptions === 0 ? (
                   <div style={{ padding: '16px', textAlign: 'center', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', color: '#166534', fontSize: '0.82rem', fontWeight: 600 }}>
-                    🎉 All exceptions have been solved and balanced with journal adjustments.
+                    {rawReport ? '🎉 All exceptions have been solved and balanced with journal adjustments.' : 'No open exceptions detected. Ready for batch run.'}
                   </div>
                 ) : (
                   Object.entries(exceptionMap).map(([code, data]) => (
@@ -422,7 +497,7 @@ export default function ReportsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
                   <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Throughput</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>25,000+</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>{rawReport ? '25,000+' : '0'}</div>
                   <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Records / second</div>
                 </div>
                 <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
@@ -432,7 +507,7 @@ export default function ReportsPage() {
                 </div>
                 <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
                   <div style={{ fontSize: '0.7rem', color: '#64748b' }}>ML Anomaly Isolation</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#7c3aed' }}>{mlResult?.runTimeMs ?? 4}ms</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#7c3aed' }}>{mlResult?.runTimeMs ?? 0}ms</div>
                   <div style={{ fontSize: '0.68rem', color: '#64748b' }}>6-feature vector</div>
                 </div>
                 <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
@@ -465,11 +540,11 @@ export default function ReportsPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span style={{ color: '#64748b' }}>Manual Touch Reduction:</span>
-                  <strong style={{ color: '#7c3aed' }}>−92.4%</strong>
+                  <strong style={{ color: '#7c3aed' }}>{rawReport ? '−92.4%' : '0.0%'}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span style={{ color: '#64748b' }}>Estimated Analyst Hours Saved:</span>
-                  <strong style={{ color: '#0f172a' }}>~42.5 hrs / batch</strong>
+                  <strong style={{ color: '#0f172a' }}>{rawReport ? '~42.5 hrs / batch' : '0 hrs'}</strong>
                 </div>
               </div>
             </div>
@@ -515,7 +590,7 @@ export default function ReportsPage() {
                   8. AI Confidence Distribution
                 </span>
                 <span style={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: 700 }}>
-                  Avg ML Score {mlResult?.averageScore ?? 18}/100
+                  Avg ML Score {mlResult ? mlResult.averageScore : 0}/100
                 </span>
               </div>
 
@@ -523,30 +598,30 @@ export default function ReportsPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: 3 }}>
                     <span style={{ color: '#16a34a', fontWeight: 700 }}>High Confidence (90–100%)</span>
-                    <span className="fin-mono">{highConf} records ({((highConf / Math.max(1, report.results.length)) * 100).toFixed(0)}%)</span>
+                    <span className="fin-mono">{highConf} records ({report.results.length > 0 ? ((highConf / report.results.length) * 100).toFixed(0) : '0'}%)</span>
                   </div>
                   <div style={{ height: 6, width: '100%', background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(highConf / Math.max(1, report.results.length)) * 100}%`, background: '#16a34a' }} />
+                    <div style={{ height: '100%', width: `${report.results.length > 0 ? (highConf / report.results.length) * 100 : 0}%`, background: '#16a34a' }} />
                   </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: 3 }}>
                     <span style={{ color: '#d97706', fontWeight: 700 }}>Medium Confidence (60–89%)</span>
-                    <span className="fin-mono">{medConf} records ({((medConf / Math.max(1, report.results.length)) * 100).toFixed(0)}%)</span>
+                    <span className="fin-mono">{medConf} records ({report.results.length > 0 ? ((medConf / report.results.length) * 100).toFixed(0) : '0'}%)</span>
                   </div>
                   <div style={{ height: 6, width: '100%', background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(medConf / Math.max(1, report.results.length)) * 100}%`, background: '#d97706' }} />
+                    <div style={{ height: '100%', width: `${report.results.length > 0 ? (medConf / report.results.length) * 100 : 0}%`, background: '#d97706' }} />
                   </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: 3 }}>
                     <span style={{ color: '#dc2626', fontWeight: 700 }}>Low Confidence / Anomaly (&lt;60%)</span>
-                    <span className="fin-mono">{lowConf} records ({((lowConf / Math.max(1, report.results.length)) * 100).toFixed(0)}%)</span>
+                    <span className="fin-mono">{lowConf} records ({report.results.length > 0 ? ((lowConf / report.results.length) * 100).toFixed(0) : '0'}%)</span>
                   </div>
                   <div style={{ height: 6, width: '100%', background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(lowConf / Math.max(1, report.results.length)) * 100}%`, background: '#dc2626' }} />
+                    <div style={{ height: '100%', width: `${report.results.length > 0 ? (lowConf / report.results.length) * 100 : 0}%`, background: '#dc2626' }} />
                   </div>
                 </div>
               </div>
@@ -570,23 +645,27 @@ export default function ReportsPage() {
                 <button
                   type="button"
                   onClick={exportAuditCSV}
+                  disabled={!rawReport || report.results.length === 0}
                   className="d-btn d-btn-ghost"
-                  style={{ fontSize: '0.82rem', height: 36 }}
+                  style={{ fontSize: '0.82rem', height: 36, opacity: rawReport ? 1 : 0.5, cursor: rawReport ? 'pointer' : 'not-allowed' }}
                 >
                   📥 Download Audit CSV
                 </button>
                 <button
                   type="button"
                   onClick={exportAuditExcel}
+                  disabled={!rawReport || report.results.length === 0}
                   className="d-btn d-btn-primary"
                   style={{
                     fontSize: '0.82rem',
                     height: 36,
-                    background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-                    borderColor: '#1e3a8a',
-                    boxShadow: '0 2px 6px rgba(37,99,235,0.3)',
+                    background: rawReport ? 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' : '#94a3b8',
+                    borderColor: rawReport ? '#1e3a8a' : '#94a3b8',
+                    boxShadow: rawReport ? '0 2px 6px rgba(37,99,235,0.3)' : 'none',
                     color: '#ffffff',
-                    fontWeight: 700
+                    fontWeight: 700,
+                    opacity: rawReport ? 1 : 0.5,
+                    cursor: rawReport ? 'pointer' : 'not-allowed'
                   }}
                 >
                   📊 Download Styled Excel (Color Headers)
@@ -612,32 +691,50 @@ export default function ReportsPage() {
                 </thead>
                 <tbody>
                   {/* Live Current Batch */}
-                  <tr style={{ background: '#f0fdf4' }}>
-                    <td className="fin-mono" style={{ fontWeight: 700, color: '#166534' }}>RPT-LIVE-BATCH</td>
-                    <td style={{ fontWeight: 700, color: '#0f172a' }}>Batch {report.batchId} (Live Current)</td>
-                    <td style={{ color: '#15803d', fontSize: '0.78rem', fontWeight: 600 }}>Just Now</td>
-                    <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 700 }}>{report.totalRecords}</td>
-                    <td className="fin-mono" style={{ textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>{report.matchRate.toFixed(1)}%</td>
-                    <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 700 }}>₹{Math.round(report.clearedAmount).toLocaleString('en-IN')}</td>
-                    <td><span className="fin-tag fin-tag--safe">✓ {signedOff ? 'Controller Certified' : (report.exceptions === 0 ? 'Fully Reconciled' : 'Audit Ready')}</span></td>
-                    <td style={{ fontSize: '0.78rem', color: '#334155' }}>Alex Morgan</td>
-                    <td style={{ textAlign: 'center', display: 'flex', gap: 6, justifyContent: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={exportAuditExcel}
-                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #1e3a8a', background: '#1e3a8a', color: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}
-                      >
-                        Excel (.xls)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={exportAuditCSV}
-                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontSize: '0.72rem', cursor: 'pointer' }}
-                      >
-                        CSV
-                      </button>
-                    </td>
-                  </tr>
+                  {rawReport ? (
+                    <tr style={{ background: '#f0fdf4' }}>
+                      <td className="fin-mono" style={{ fontWeight: 700, color: '#166534' }}>RPT-LIVE-BATCH</td>
+                      <td style={{ fontWeight: 700, color: '#0f172a' }}>Batch {report.batchId} (Live Current)</td>
+                      <td style={{ color: '#15803d', fontSize: '0.78rem', fontWeight: 600 }}>Just Now</td>
+                      <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 700 }}>{report.totalRecords}</td>
+                      <td className="fin-mono" style={{ textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>{report.matchRate.toFixed(1)}%</td>
+                      <td className="fin-mono" style={{ textAlign: 'right', fontWeight: 700 }}>₹{Math.round(report.clearedAmount).toLocaleString('en-IN')}</td>
+                      <td><span className="fin-tag fin-tag--safe">✓ {signedOff ? 'Controller Certified' : (report.exceptions === 0 ? 'Fully Reconciled' : 'Audit Ready')}</span></td>
+                      <td style={{ fontSize: '0.78rem', color: '#334155' }}>Alex Morgan</td>
+                      <td style={{ textAlign: 'center', display: 'flex', gap: 6, justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={exportAuditExcel}
+                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #1e3a8a', background: '#1e3a8a', color: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Excel (.xls)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={exportAuditCSV}
+                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontSize: '0.72rem', cursor: 'pointer' }}
+                        >
+                          CSV
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr style={{ background: '#f8fafc' }}>
+                      <td className="fin-mono" style={{ color: '#64748b' }}>RPT-PENDING</td>
+                      <td style={{ color: '#64748b', fontStyle: 'italic' }}>No active batch loaded yet</td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.78rem' }}>—</td>
+                      <td className="fin-mono" style={{ textAlign: 'right', color: '#64748b' }}>0</td>
+                      <td className="fin-mono" style={{ textAlign: 'right', color: '#64748b' }}>0.0%</td>
+                      <td className="fin-mono" style={{ textAlign: 'right', color: '#64748b' }}>₹0</td>
+                      <td><span className="fin-tag fin-tag--pending">Awaiting Ingest</span></td>
+                      <td style={{ fontSize: '0.78rem', color: '#64748b' }}>—</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <a href="#/reconciliation" style={{ fontSize: '0.72rem', color: '#2563eb', textDecoration: 'none', fontWeight: 700 }}>
+                          Run Batch →
+                        </a>
+                      </td>
+                    </tr>
+                  )}
 
                   {RECENT_AUDIT_LOGS.map(log => (
                     <tr key={log.id}>
