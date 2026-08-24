@@ -180,21 +180,21 @@ export default function ExceptionsPage() {
     setTimeout(() => setSaveSuccessMsg(null), 7000)
   }
 
-  // Export Solved Exceptions to Styled Excel (.xls) with Colored Headers
-  function exportSolvedExceptionsExcel() {
-    const solvedRecords = allExceptions.filter(e => resolvedMap[e.record.id])
-    if (solvedRecords.length === 0) return
+  // Export Exceptions Audit Schedule to Styled Excel (.xls) with Colored Headers
+  function exportExceptionsExcel() {
+    if (allExceptions.length === 0) return
 
     const headers = [
       'Record ID',
-      'Bank/Invoice Source',
+      'Source',
       'Counterparty',
-      'Original Exception Type',
-      'Original Delta (₹)',
-      'Resolution Method Applied',
-      'Auditor Resolution Memo',
+      'Exception Type',
+      'Variance Delta (₹)',
+      'Resolution Status',
+      'Resolution Method Applied / Suggested Action',
+      'Auditor Memo / Action Plan',
       'Amount (₹)',
-      'Resolved Date & Time',
+      'Last Updated',
       'Lead Controller'
     ]
 
@@ -202,18 +202,25 @@ export default function ExceptionsPage() {
       .map(h => `<th style="background-color: #1e3a8a; color: #ffffff; font-family: Arial, sans-serif; font-size: 11pt; font-weight: bold; padding: 8px 12px; border: 1px solid #334155; text-align: left;">${h}</th>`)
       .join('')
 
-    const rowsHtml = solvedRecords.map((item, idx) => {
+    const rowsHtml = allExceptions.map((item, idx) => {
       const fix = resolvedMap[item.record.id]
-      const bg = idx % 2 === 0 ? '#f0fdf4' : '#ffffff'
+      const isSolved = !!fix
+      const bg = isSolved ? '#f0fdf4' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
+      const idFormatted = isSolved ? `${item.record.id} (FIX)` : item.record.id
+      const statusFormatted = isSolved ? '✓ SOLVED (FIX)' : '⚠️ OPEN EXCEPTION'
+      const statusColor = isSolved ? '#15803d' : '#dc2626'
+      const methodFormatted = isSolved ? fix.method : 'Pending Action'
+      const memoFormatted = isSolved ? fix.note : (item.suggestedAction || (item.exceptionCode && EXCEPTION_DESCRIPTIONS[item.exceptionCode]?.action) || 'Awaiting reconciliation review')
 
       return `<tr style="background-color: ${bg};">
-        <td style="font-family: 'Courier New', monospace; font-weight: bold; padding: 6px 10px; border: 1px solid #e2e8f0; color: #15803d;">${item.record.id} (FIX)</td>
+        <td style="font-family: 'Courier New', monospace; font-weight: bold; padding: 6px 10px; border: 1px solid #e2e8f0; color: ${isSolved ? '#15803d' : '#2563eb'};">${idFormatted}</td>
         <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0;">${item.record.source}</td>
         <td style="font-family: Arial, sans-serif; font-weight: 600; padding: 6px 10px; border: 1px solid #e2e8f0;">${item.record.counterparty}</td>
         <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #991b1b; font-weight: bold;">${item.exceptionCode || 'AMOUNT_MISMATCH'}</td>
-        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; color: #dc2626;">−₹${item.delta.toFixed(2)}</td>
-        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #166534;">${fix?.method || 'Resolved'}</td>
-        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #334155;">${fix?.note || ''}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: bold;">−₹${item.delta.toFixed(2)}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: bold; color: ${statusColor};">${statusFormatted}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: bold; color: ${isSolved ? '#166534' : '#334155'};">${methodFormatted}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #334155;">${memoFormatted}</td>
         <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: bold;">₹${item.record.amount.toFixed(2)}</td>
         <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #64748b;">${fix?.timestamp || new Date().toLocaleTimeString()}</td>
         <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0;">${analystName}</td>
@@ -223,7 +230,7 @@ export default function ExceptionsPage() {
     const excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Resolved Exceptions</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>RiskShield Exceptions</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 </head>
 <body>
   <table border="1" style="border-collapse: collapse; width: 100%;">
@@ -240,7 +247,7 @@ export default function ExceptionsPage() {
     const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `RiskShield_Resolved_Exceptions_${new Date().toISOString().slice(0, 10)}.xls`
+    link.download = `RiskShield_Exceptions_Audit_${new Date().toISOString().slice(0, 10)}.xls`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -313,11 +320,11 @@ export default function ExceptionsPage() {
                 </button>
               )}
 
-              {/* DOWNLOAD SOLVED EXCEPTIONS EXCEL BUTTON */}
-              {resolvedCount > 0 && (
+              {/* DOWNLOAD EXCEPTIONS EXCEL BUTTON (Always Available) */}
+              {allExceptions.length > 0 && (
                 <button
                   type="button"
-                  onClick={exportSolvedExceptionsExcel}
+                  onClick={exportExceptionsExcel}
                   className="d-btn d-btn-ghost"
                   style={{
                     display: 'inline-flex',
@@ -330,9 +337,9 @@ export default function ExceptionsPage() {
                     borderColor: '#bfdbfe',
                     fontWeight: 700,
                   }}
-                  title="Download Excel sheet of all solved exceptions with colored headers"
+                  title="Download complete Exceptions Audit Schedule in Styled Excel (.xls) with colored headers"
                 >
-                  📊 Download Solved (.xls)
+                  📊 Download Exceptions (.xls)
                 </button>
               )}
 
