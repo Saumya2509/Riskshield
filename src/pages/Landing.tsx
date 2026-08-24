@@ -1,13 +1,11 @@
 import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import TrustMetrics from '../components/TrustMetrics'
-import Problem from '../components/Problem'
+import ScrollytellingSection from '../components/ScrollytellingSection'
 import Features from '../components/Features'
-import HowItWorks from '../components/HowItWorks'
-import WhyChoose from '../components/WhyChoose'
+import InteractiveTerminal from '../components/InteractiveTerminal'
 import FAQ from '../components/FAQ'
 import FinalCTA from '../components/FinalCTA'
-import Footer from '../components/Footer'
 import '../landing.css'
 
 export default function Landing() {
@@ -17,14 +15,12 @@ export default function Landing() {
       <main>
         <Hero />
         <TrustMetrics />
-        <Problem />
+        <ScrollytellingSection />
         <Features />
-        <HowItWorks />
-        <WhyChoose />
+        <InteractiveTerminal />
         <FAQ />
         <FinalCTA />
       </main>
-      <Footer />
     </div>
   )
 }
