@@ -166,13 +166,18 @@
 
 /* ── Tables ──────────────────────────────────────────────────────────────── */
 .fin-tbl-wrap, .fin-rec-wrap {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
-  max-height: 480px;
+  -webkit-overflow-scrolling: touch;
+  max-height: 520px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .fin-tbl {
   width: 100%;
+  min-width: 960px;
   border-collapse: collapse;
   font-size: 0.79rem;
   table-layout: auto;

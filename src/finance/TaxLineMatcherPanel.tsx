@@ -315,7 +315,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
           </div>
 
           {/* Regime Switcher Pills */}
-          <div style={{ display: 'flex', gap: 6, background: '#e2e8f0', padding: 3, borderRadius: 8 }}>
+          <div style={{ display: 'flex', gap: 6, background: '#e2e8f0', padding: 3, borderRadius: 8, flexWrap: 'wrap' }}>
             {(['115BAA', 'OLD', '115BAB'] as const).map(reg => (
               <button
                 key={reg}
@@ -330,7 +330,8 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                   background: selectedRegime === reg ? '#ffffff' : 'transparent',
                   color: selectedRegime === reg ? '#0f172a' : '#64748b',
                   boxShadow: selectedRegime === reg ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {reg === '115BAA' ? 'Sec 115BAA (25.17%)' : reg === 'OLD' ? 'Old Regime (34.94%)' : 'Sec 115BAB (17.16%)'}
@@ -432,7 +433,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
         </div>
       ) : (
         <div className="fin-rec-wrap" style={{ maxHeight: 540, margin: '0 20px 20px' }}>
-          <table className="fin-tbl">
+          <table className="fin-tbl" style={{ minWidth: 980 }}>
             <thead>
               <tr>
                 <th>Record ID</th>
