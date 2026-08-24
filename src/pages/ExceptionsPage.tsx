@@ -2,7 +2,7 @@ import { useState } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
-import { runReconciliation, type MatchResult } from '../finance/reconciliationEngine'
+import type { MatchResult } from '../finance/reconciliationEngine'
 import { updateRecordInSupabase } from '../finance/supabaseClient'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
@@ -49,8 +49,8 @@ export default function ExceptionsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const ctx = useFinanceContext()
 
-  // Ensure there's a baseline report available
-  const report = ctx.report || runReconciliation()
+  // Only use active report from context. If new user hasn't ingested yet, report is null.
+  const report = ctx.report
   const [filterCode, setFilterCode] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState<string>('')
   
@@ -62,7 +62,7 @@ export default function ExceptionsPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null)
 
-  const allExceptions = report.exceptionList
+  const allExceptions: MatchResult[] = report ? report.exceptionList : []
   const resolvedMap = ctx.resolvedMap
   const resolvedCount = Object.keys(resolvedMap).length
 
@@ -135,6 +135,72 @@ export default function ExceptionsPage() {
     setTimeout(() => setSaveSuccessMsg(null), 6000)
   }
 
+  // Export Solved Exceptions to Styled Excel (.xls) with Colored Headers
+  function exportSolvedExceptionsExcel() {
+    const solvedRecords = allExceptions.filter(e => resolvedMap[e.record.id])
+    if (solvedRecords.length === 0) return
+
+    const headers = [
+      'Record ID',
+      'Bank/Invoice Source',
+      'Counterparty',
+      'Original Exception Type',
+      'Original Delta (₹)',
+      'Resolution Method Applied',
+      'Auditor Resolution Memo',
+      'Amount (₹)',
+      'Resolved Date & Time',
+      'Lead Controller'
+    ]
+
+    const headerHtml = headers
+      .map(h => `<th style="background-color: #1e3a8a; color: #ffffff; font-family: Arial, sans-serif; font-size: 11pt; font-weight: bold; padding: 8px 12px; border: 1px solid #334155; text-align: left;">${h}</th>`)
+      .join('')
+
+    const rowsHtml = solvedRecords.map((item, idx) => {
+      const fix = resolvedMap[item.record.id]
+      const bg = idx % 2 === 0 ? '#f0fdf4' : '#ffffff'
+
+      return `<tr style="background-color: ${bg};">
+        <td style="font-family: 'Courier New', monospace; font-weight: bold; padding: 6px 10px; border: 1px solid #e2e8f0; color: #15803d;">${item.record.id} (FIX)</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0;">${item.record.source}</td>
+        <td style="font-family: Arial, sans-serif; font-weight: 600; padding: 6px 10px; border: 1px solid #e2e8f0;">${item.record.counterparty}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #991b1b; font-weight: bold;">${item.exceptionCode || 'AMOUNT_MISMATCH'}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; color: #dc2626;">−₹${item.delta.toFixed(2)}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #166534;">${fix?.method || 'Resolved'}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #334155;">${fix?.note || ''}</td>
+        <td style="font-family: Arial, sans-serif; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: bold;">₹${item.record.amount.toFixed(2)}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0; color: #64748b;">${fix?.timestamp || new Date().toLocaleTimeString()}</td>
+        <td style="font-family: Arial, sans-serif; padding: 6px 10px; border: 1px solid #e2e8f0;">${analystName}</td>
+      </tr>`
+    }).join('')
+
+    const excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Resolved Exceptions</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head>
+<body>
+  <table border="1" style="border-collapse: collapse; width: 100%;">
+    <thead>
+      <tr>${headerHtml}</tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+</body>
+</html>`
+
+    const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `RiskShield_Resolved_Exceptions_${new Date().toISOString().slice(0, 10)}.xls`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="dash-app fin-page">
       <TopNav onMenu={() => setMenuOpen(true)} />
@@ -147,7 +213,14 @@ export default function ExceptionsPage() {
             <div>
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 Exception Resolution Workbench
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#fee2e2', color: '#991b1b', borderRadius: 999 }}>
+                <span style={{
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  background: allExceptions.length - resolvedCount > 0 ? '#fee2e2' : '#dcfce7',
+                  color: allExceptions.length - resolvedCount > 0 ? '#991b1b' : '#15803d',
+                  borderRadius: 999
+                }}>
                   {allExceptions.length - resolvedCount} Open Discrepancies
                 </span>
                 {resolvedCount > 0 && (
@@ -168,6 +241,29 @@ export default function ExceptionsPage() {
                 </strong>
               </div>
 
+              {/* DOWNLOAD SOLVED EXCEPTIONS EXCEL BUTTON */}
+              {resolvedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={exportSolvedExceptionsExcel}
+                  className="d-btn d-btn-ghost"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: '0.82rem',
+                    height: 38,
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    borderColor: '#bfdbfe',
+                    fontWeight: 700,
+                  }}
+                  title="Download Excel sheet of all solved exceptions with colored headers"
+                >
+                  📊 Download Solved (.xls)
+                </button>
+              )}
+
               {/* SAVE BUTTON FOR FIXES */}
               <button
                 type="button"
@@ -178,6 +274,7 @@ export default function ExceptionsPage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
+                  height: 38,
                   background: resolvedCount > 0 ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' : '#94a3b8',
                   borderColor: resolvedCount > 0 ? '#16a34a' : '#94a3b8',
                   boxShadow: resolvedCount > 0 ? '0 2px 8px rgba(22,163,74,0.3)' : 'none',
@@ -193,7 +290,7 @@ export default function ExceptionsPage() {
                   type="button"
                   onClick={() => ctx.resetFixes()}
                   className="d-btn d-btn-ghost"
-                  style={{ fontSize: '0.78rem' }}
+                  style={{ fontSize: '0.78rem', height: 38 }}
                 >
                   ↺ Reset Fixes
                 </button>
@@ -280,170 +377,206 @@ export default function ExceptionsPage() {
           </div>
 
           {/* Search bar */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-            <input
-              type="text"
-              placeholder="Search by Record ID (e.g. B2-BNK-019), Counterparty, or Description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-            />
-          </div>
+          {allExceptions.length > 0 && (
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="Search by Record ID (e.g. B2-BNK-019), Counterparty, or Description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+              />
+            </div>
+          )}
 
-          {/* Active Exception Records Table */}
+          {/* Active Exception Records Table / Empty State */}
           <div className="fin-card">
             <div className="fin-card-hd">
               <div>
                 <h2 className="fin-card-title">Active Exception Records</h2>
                 <p className="fin-card-desc">
-                  Showing {filtered.length} exceptions · Click <strong>⚡ Solve</strong> on any row to apply fix, then click <strong>💾 Save Changes</strong> above
+                  {allExceptions.length === 0
+                    ? '0 exceptions detected · Awaiting batch reconciliation'
+                    : `Showing ${filtered.length} exceptions · Click ⚡ Solve on any row to apply fix, then click 💾 Save Changes above`}
                 </p>
               </div>
             </div>
 
-            <div className="fin-rec-wrap" style={{ maxHeight: 540 }}>
-              <table className="fin-tbl">
-                <thead>
-                  <tr>
-                    <th style={{ width: 40 }}>Status</th>
-                    <th>ID</th>
-                    <th>Source</th>
-                    <th>Counterparty</th>
-                    <th>Exception Code &amp; Status</th>
-                    <th style={{ textAlign: 'right' }}>Amount</th>
-                    <th style={{ textAlign: 'right' }}>Variance (Δ)</th>
-                    <th>Suggested Action / Applied Fix</th>
-                    <th style={{ textAlign: 'center', width: 130 }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(item => {
-                    const resolvedInfo = resolvedMap[item.record.id]
-                    const isResolved = Boolean(resolvedInfo)
-                    const code = item.exceptionCode || 'AMOUNT_MISMATCH'
-                    const meta = EXCEPTION_DESCRIPTIONS[code] || EXCEPTION_DESCRIPTIONS['NO_MATCH']
+            {/* Zero State for New Users */}
+            {allExceptions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🛡️</div>
+                <h3 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 }}>
+                  No Active Exceptions Found
+                </h3>
+                <p style={{ margin: '0 0 20px', fontSize: '0.86rem', maxWidth: 460, marginInline: 'auto', lineHeight: 1.6 }}>
+                  You are viewing a clean slate with zero discrepancy exposure. Upload your CSV files or select a pre-loaded enterprise batch in Multi-Source Recon to start identifying and resolving exceptions.
+                </p>
+                <a
+                  href="#/reconciliation"
+                  className="d-btn d-btn-primary"
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 22px', fontSize: '0.88rem', fontWeight: 700 }}
+                >
+                  🔄 Go to Multi-Source Recon
+                </a>
+              </div>
+            ) : (
+              <div className="fin-rec-wrap" style={{ maxHeight: 540 }}>
+                <table className="fin-tbl">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40 }}>Status</th>
+                      <th>ID</th>
+                      <th>Source</th>
+                      <th>Counterparty</th>
+                      <th>Exception Code &amp; Status</th>
+                      <th style={{ textAlign: 'right' }}>Amount</th>
+                      <th style={{ textAlign: 'right' }}>Variance (Δ)</th>
+                      <th>Suggested Action / Applied Fix</th>
+                      <th style={{ textAlign: 'center', width: 130 }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(item => {
+                      const resolvedInfo = resolvedMap[item.record.id]
+                      const isResolved = Boolean(resolvedInfo)
+                      const code = item.exceptionCode || 'AMOUNT_MISMATCH'
+                      const meta = EXCEPTION_DESCRIPTIONS[code] || EXCEPTION_DESCRIPTIONS['NO_MATCH']
 
-                    return (
-                      <tr key={item.record.id} style={{ opacity: isResolved ? 0.75 : 1, transition: 'opacity 0.2s', background: isResolved ? 'rgba(240, 253, 244, 0.6)' : 'transparent' }}>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '1rem' }}>
-                            {isResolved ? '✅' : '⚠️'}
-                          </span>
-                        </td>
-                        <td className="fin-mono">
-                          <a
-                            href={`#/record-details?id=${item.record.id}`}
-                            style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 700 }}
-                            title="Inspect 3-way record details & resolution"
-                          >
-                            {item.record.id}
-                          </a>
-                        </td>
-                        <td>
-                          <span style={{
-                            padding: '1px 7px', borderRadius: 6, fontSize: '0.68rem', fontWeight: 700,
-                            background: item.record.source === 'BANK' ? '#dbeafe' : item.record.source === 'INVOICE' ? '#fef3c7' : '#dcfce7',
-                            color: item.record.source === 'BANK' ? '#1e40af' : item.record.source === 'INVOICE' ? '#92400e' : '#166534',
-                          }}>
-                            {item.record.source}
-                          </span>
-                        </td>
-                        <td style={{ color: '#0f172a', fontWeight: 600 }}>{item.record.counterparty}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <span style={{
-                              display: 'inline-block', padding: '2px 8px', borderRadius: 6,
-                              fontSize: '0.72rem', fontWeight: 700,
-                              background: meta.badgeColor.bg, color: meta.badgeColor.text,
-                            }}>
-                              {code}
+                      return (
+                        <tr key={item.record.id} style={{ opacity: isResolved ? 0.75 : 1, transition: 'opacity 0.2s', background: isResolved ? 'rgba(240, 253, 244, 0.6)' : 'transparent' }}>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ fontSize: '1rem' }}>
+                              {isResolved ? '✅' : '⚠️'}
                             </span>
-                            {/* In bracket fix badge */}
+                          </td>
+                          <td className="fin-mono">
+                            <a
+                              href={`#/record-details?id=${item.record.id}`}
+                              style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 700 }}
+                              title="Inspect 3-way record details & resolution"
+                            >
+                              {item.record.id}
+                            </a>
                             {isResolved && (
                               <span style={{
-                                display: 'inline-block', padding: '2px 7px', borderRadius: 6,
-                                fontSize: '0.68rem', fontWeight: 700,
-                                background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0',
+                                marginLeft: 6,
+                                padding: '1px 5px',
+                                borderRadius: 4,
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                background: '#dcfce7',
+                                color: '#15803d',
+                                border: '1px solid #86efac'
                               }}>
-                                [Fixed: {resolvedInfo.method}]
+                                (FIX)
                               </span>
                             )}
-                          </div>
-                        </td>
-                        <td className="fin-mono" style={{ textAlign: 'right' }}>
-                          {item.record.currency !== 'INR' ? item.record.currency + ' ' : '₹'}
-                          {item.record.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="fin-mono" style={{ textAlign: 'right', color: isResolved ? '#16a34a' : (item.delta > 0.01 ? '#dc2626' : '#16a34a') }}>
-                          {isResolved ? (
-                            <span style={{ color: '#16a34a', fontWeight: 700 }}>₹0.00</span>
-                          ) : (
-                            item.delta > 0.01 ? `−₹${item.delta.toFixed(2)}` : '—'
-                          )}
-                        </td>
-                        <td style={{ fontSize: '0.78rem', color: '#475569', maxWidth: 300 }}>
-                          {isResolved ? (
-                            <span style={{ color: '#15803d', fontWeight: 600 }}>
-                              ✓ {resolvedInfo?.note}
+                          </td>
+                          <td>
+                            <span style={{
+                              padding: '1px 7px', borderRadius: 6, fontSize: '0.68rem', fontWeight: 700,
+                              background: item.record.source === 'BANK' ? '#dbeafe' : item.record.source === 'INVOICE' ? '#fef3c7' : '#dcfce7',
+                              color: item.record.source === 'BANK' ? '#1e40af' : item.record.source === 'INVOICE' ? '#92400e' : '#166534',
+                            }}>
+                              {item.record.source}
                             </span>
-                          ) : (
-                            item.suggestedAction || meta.action
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {isResolved ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenSolveModal(item)}
-                              style={{
-                                padding: '3px 8px',
-                                borderRadius: 6,
-                                background: '#dcfce7',
-                                border: '1px solid #86efac',
-                                color: '#15803d',
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Edit Fix
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenSolveModal(item)}
-                              style={{
-                                padding: '5px 12px',
-                                borderRadius: 6,
-                                border: '1px solid #2563eb',
-                                background: '#2563eb',
-                                color: '#ffffff',
-                                fontSize: '0.76rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                boxShadow: '0 1px 3px rgba(37,99,235,0.3)',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              ⚡ Solve
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                          <td style={{ color: '#0f172a', fontWeight: 600 }}>{item.record.counterparty}</td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                              <span style={{
+                                display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                                fontSize: '0.72rem', fontWeight: 700,
+                                background: meta.badgeColor.bg, color: meta.badgeColor.text,
+                              }}>
+                                {code}
+                              </span>
+                              {/* In bracket fix badge */}
+                              {isResolved && (
+                                <span style={{
+                                  display: 'inline-block', padding: '2px 7px', borderRadius: 6,
+                                  fontSize: '0.68rem', fontWeight: 700,
+                                  background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0',
+                                }}>
+                                  [Fixed: {resolvedInfo.method}]
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="fin-mono" style={{ textAlign: 'right' }}>
+                            {item.record.currency !== 'INR' ? item.record.currency + ' ' : '₹'}
+                            {item.record.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="fin-mono" style={{ textAlign: 'right', color: isResolved ? '#16a34a' : (item.delta > 0.01 ? '#dc2626' : '#16a34a') }}>
+                            {isResolved ? (
+                              <span style={{ color: '#16a34a', fontWeight: 700 }}>₹0.00</span>
+                            ) : (
+                              item.delta > 0.01 ? `−₹${item.delta.toFixed(2)}` : '—'
+                            )}
+                          </td>
+                          <td style={{ fontSize: '0.78rem', color: '#475569', maxWidth: 300 }}>
+                            {isResolved ? (
+                              <span style={{ color: '#15803d', fontWeight: 600 }}>
+                                ✓ {resolvedInfo?.note}
+                              </span>
+                            ) : (
+                              item.suggestedAction || meta.action
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {isResolved ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSolveModal(item)}
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: 6,
+                                  background: '#dcfce7',
+                                  border: '1px solid #86efac',
+                                  color: '#15803d',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Edit Fix
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSolveModal(item)}
+                                style={{
+                                  padding: '5px 12px',
+                                  borderRadius: 6,
+                                  border: '1px solid #2563eb',
+                                  background: '#2563eb',
+                                  color: '#ffffff',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                              >
+                                ⚡ Solve
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
         </main>
       </div>
 
-      {/* ─── INTERACTIVE RESOLUTION ACTION MODAL ──────────────────────────────── */}
+      {/* ─── DYNAMIC 1-CLICK RESOLUTION ACTION MODAL ───────────────────────── */}
       {solvingItem && (
         <div style={{
           position: 'fixed',
@@ -460,7 +593,7 @@ export default function ExceptionsPage() {
             background: '#ffffff',
             borderRadius: 16,
             width: '100%',
-            maxWidth: 640,
+            maxWidth: 620,
             boxShadow: '0 25px 60px -15px rgba(0,0,0,0.5)',
             border: '1px solid #e2e8f0',
             overflow: 'hidden',
@@ -470,8 +603,8 @@ export default function ExceptionsPage() {
             <div style={{ padding: '18px 24px', background: '#0f172a', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 800 }}>⚡ Solve Exception: {solvingItem.record.id}</span>
-                  <span style={{ background: '#3b82f6', color: '#fff', fontSize: '0.68rem', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>⚡ Solve Exception: {solvingItem.record.id}</span>
+                  <span style={{ background: '#dc2626', color: '#fff', fontSize: '0.68rem', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
                     {solvingItem.exceptionCode || 'AMOUNT_MISMATCH'}
                   </span>
                 </div>
@@ -493,26 +626,26 @@ export default function ExceptionsPage() {
               {/* Discrepancy KPI Banner */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
                 <div>
-                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Record Amount</small>
+                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Original Amount</small>
                   <strong style={{ display: 'block', fontSize: '1.1rem', color: '#0f172a' }}>₹{solvingItem.record.amount.toLocaleString('en-IN')}</strong>
                 </div>
                 <div>
                   <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Variance Delta</small>
-                  <strong style={{ display: 'block', fontSize: '1.1rem', color: solvingItem.delta > 0 ? '#dc2626' : '#16a34a' }}>
-                    {solvingItem.delta > 0 ? `−₹${solvingItem.delta.toFixed(2)}` : '₹0.00'}
+                  <strong style={{ display: 'block', fontSize: '1.1rem', color: solvingItem.delta > 0.01 ? '#dc2626' : '#16a34a' }}>
+                    {solvingItem.delta > 0.01 ? `−₹${solvingItem.delta.toFixed(2)}` : '✓ ₹0.00'}
                   </strong>
                 </div>
                 <div>
-                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Suggested Remedy</small>
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, marginTop: 2 }}>
-                    {solvingItem.exceptionCode === 'MISSING_REF' ? 'Assign Ref / Suspense' : (solvingItem.exceptionCode === 'CURRENCY_MISMATCH' ? 'Spot FX Booking' : 'Post Debit/Fee Memo')}
+                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Pass Tier</small>
+                  <span style={{ display: 'block', fontSize: '0.82rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>
+                    Pass {solvingItem.pass ?? 3} ({solvingItem.confidence}% Conf)
                   </span>
                 </div>
               </div>
 
-              {/* Action Selection Tabs based on Exception Code */}
+              {/* Dynamic Action Tabs Based on Exception Type */}
               <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
-                Select Accounting Resolution Action:
+                Select Contextual Accounting Solution:
               </p>
 
               {/* 1. AMOUNT_MISMATCH / PARTIAL */}
@@ -530,7 +663,7 @@ export default function ExceptionsPage() {
                   >
                     <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>📝 Option 1: Raise Debit Memo for ₹{solvingItem.delta.toFixed(2)}</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Generates customer debit note and holds remaining balance until settled.
+                      Generates customer debit note #DM-{solvingItem.record.id.slice(-4)} and holds remaining delta until settled.
                     </p>
                   </div>
 
@@ -544,9 +677,9 @@ export default function ExceptionsPage() {
                       cursor: 'pointer'
                     }}
                   >
-                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>⚖️ Option 2: Accept Gateway Fee Write-Off (GL 6200)</strong>
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>⚖️ Option 2: Accept Payment Gateway MDR Fee Write-Off (GL 6200)</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Recognizes the ₹{solvingItem.delta.toFixed(2)} discrepancy as payment processing / bank MDR fee.
+                      Recognize the ₹{solvingItem.delta.toFixed(2)} difference as payment processing fee and clear invoice in full.
                     </p>
                   </div>
                 </div>
@@ -565,9 +698,9 @@ export default function ExceptionsPage() {
                       cursor: 'pointer'
                     }}
                   >
-                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🔍 Option 1: Link to Discovered Invoice Ref</strong>
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🔍 Option 1: Link to Discovered Invoice Reference</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Attach matching invoice/PO number retrieved from customer remitter.
+                      Matches payment to counterparty invoice batch using verified amount and date window.
                     </p>
                   </div>
 
@@ -581,9 +714,9 @@ export default function ExceptionsPage() {
                       cursor: 'pointer'
                     }}
                   >
-                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🏛️ Option 2: Post to Unallocated Suspense Account (GL 2190)</strong>
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🏛️ Option 2: Allocate to Unallocated Suspense Account (GL 2190)</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Transfers ₹{solvingItem.record.amount.toLocaleString('en-IN')} to suspense ledger pending customer confirmation.
+                      Holds ₹{solvingItem.record.amount.toLocaleString('en-IN')} in suspense ledger pending customer remitter confirmation.
                     </p>
                   </div>
                 </div>
@@ -604,7 +737,7 @@ export default function ExceptionsPage() {
                   >
                     <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>💱 Option 1: Apply Spot Booking FX Rate (USD/INR @ ₹83.40)</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Converts foreign currency and posts realized FX variance to GL 7100.
+                      Converts foreign currency at official settlement date rate and books realized FX gain/loss.
                     </p>
                   </div>
                 </div>
@@ -623,16 +756,16 @@ export default function ExceptionsPage() {
                       cursor: 'pointer'
                     }}
                   >
-                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🚫 Option 1: Void Duplicate Billing Entry</strong>
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>🚫 Option 1: Void Duplicate Invoice Entry</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Marks the duplicate as cancelled and unblocks the primary cleared transaction.
+                      Voids duplicate billing record and releases bank settlement to primary invoice.
                     </p>
                   </div>
                 </div>
               )}
 
               {/* 5. ORPHAN_LEDGER / NO_MATCH */}
-              {(solvingItem.exceptionCode === 'ORPHAN_LEDGER' || solvingItem.exceptionCode === 'NO_MATCH' || solvingItem.exceptionCode === 'DATE_WINDOW_EXCEEDED') && (
+              {(solvingItem.exceptionCode === 'ORPHAN_LEDGER' || solvingItem.exceptionCode === 'NO_MATCH') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div
                     onClick={() => setActiveTab('action-1')}
@@ -644,9 +777,25 @@ export default function ExceptionsPage() {
                       cursor: 'pointer'
                     }}
                   >
-                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>↺ Option 1: Reverse Accrual / Post Journal Entry</strong>
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>↺ Option 1: Reverse Accrual Journal Entry</strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
-                      Reverses uncollected ledger accrual entry for month-end compliance.
+                      Reverses general ledger accrual entry since corresponding bank settlement was never deposited.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setActiveTab('action-2')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${activeTab === 'action-2' ? '#2563eb' : '#e2e8f0'}`,
+                      background: activeTab === 'action-2' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>📩 Option 2: Dispatch Customer Payment Reminder Notice</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Flags invoice for automated dunning reminder and places account on payment follow-up.
                     </p>
                   </div>
                 </div>
@@ -659,26 +808,24 @@ export default function ExceptionsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Counterparty confirmed via email ticket #8492..."
+                  placeholder="e.g., Verified with treasury desk, fee variance approved..."
                   value={customInput}
                   onChange={(e) => setCustomInput(e.target.value)}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                 />
               </div>
 
-              {/* Analyst Assignee */}
-              <div style={{ marginTop: 10 }}>
-                <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                  Assigned Certifier
-                </label>
+              {/* Assigned Controller Selector */}
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: '#64748b' }}>
+                <span>Certified By: <strong>{analystName}</strong></span>
                 <select
                   value={analystName}
                   onChange={(e) => setAnalystName(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.8rem', background: '#fff' }}
+                  style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.74rem' }}
                 >
                   <option value="Sarah Chen (Lead Controller)">Sarah Chen (Lead Controller)</option>
-                  <option value="Priya Sharma (Senior Auditor)">Priya Sharma (Senior Auditor)</option>
-                  <option value="Alex Morgan (Treasury Ops)">Alex Morgan (Treasury Ops)</option>
+                  <option value="Alex Morgan (Senior Auditor)">Alex Morgan (Senior Auditor)</option>
+                  <option value="David Miller (Treasury Specialist)">David Miller (Treasury Specialist)</option>
                 </select>
               </div>
             </div>
@@ -698,18 +845,28 @@ export default function ExceptionsPage() {
                 disabled={isSubmitting}
                 onClick={() => {
                   const code = solvingItem.exceptionCode || 'AMOUNT_MISMATCH'
-                  if (code === 'MISSING_REF') {
-                    if (activeTab === 'action-1') handleExecuteResolution('Ref Linked', 'Attached discovered invoice ref from counterparty remitter')
-                    else handleExecuteResolution('Suspense Posted', 'Transferred unallocated funds to Suspense Account GL 2190')
+                  if (code === 'AMOUNT_MISMATCH' || solvingItem.status === 'Partial') {
+                    if (activeTab === 'action-1') {
+                      handleExecuteResolution('Debit Memo Raised', `Raised debit memo #DM-${solvingItem.record.id.slice(-4)} for ₹${solvingItem.delta.toFixed(2)}`)
+                    } else {
+                      handleExecuteResolution('Gateway Fee Accepted', `Booked ₹${solvingItem.delta.toFixed(2)} variance to Gateway MDR Expense GL 6200`)
+                    }
+                  } else if (code === 'MISSING_REF') {
+                    if (activeTab === 'action-1') {
+                      handleExecuteResolution('Invoice Linked', `Attached discovered invoice reference from counterparty remitter`)
+                    } else {
+                      handleExecuteResolution('Suspense Allocated', `Transferred ₹${solvingItem.record.amount.toLocaleString('en-IN')} to Suspense Account GL 2190`)
+                    }
                   } else if (code === 'CURRENCY_MISMATCH') {
-                    handleExecuteResolution('FX Spot Converted', 'Applied booking spot FX rate @ ₹83.40; realized FX gain/loss booked')
+                    handleExecuteResolution('Spot FX Applied', `Applied spot rate USD/INR @ ₹83.40 and booked FX gain/loss`)
                   } else if (code === 'DUPLICATE') {
-                    handleExecuteResolution('Duplicate Voided', 'Voided duplicate invoice entry #2; primary charge cleared')
-                  } else if (code === 'ORPHAN_LEDGER' || code === 'NO_MATCH') {
-                    handleExecuteResolution('Accrual Reversed', 'Reversed uncollected accrual journal entry for period close')
+                    handleExecuteResolution('Duplicate Voided', `Voided duplicate invoice entry and unblocked payment`)
                   } else {
-                    if (activeTab === 'action-1') handleExecuteResolution('Debit Memo Raised', `Raised debit memo #DM-${solvingItem.record.id.slice(-3)} for ₹${solvingItem.delta.toFixed(2)}`)
-                    else handleExecuteResolution('Gateway Fee Accepted', `Booked ₹${solvingItem.delta.toFixed(2)} variance to Gateway MDR Expense GL 6200`)
+                    if (activeTab === 'action-1') {
+                      handleExecuteResolution('Accrual Reversed', `Reversed uncollected accrual journal entry`)
+                    } else {
+                      handleExecuteResolution('Dunning Notice Sent', `Dispatched payment follow-up notice to customer`)
+                    }
                   }
                 }}
                 className="d-btn d-btn-primary"
