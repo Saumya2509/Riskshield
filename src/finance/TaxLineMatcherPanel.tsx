@@ -50,6 +50,14 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
   const dynamicLiability = effectiveTaxOnNet + currentSummary.totalForeignWithholding
   const dynamicTaxSavings = Math.round(currentSummary.totalDeductions * regimeMeta.rate)
 
+  const totalPenaltyMitigated = useMemo(() => {
+    return currentSummary.lineItems.reduce((acc, item) => {
+      return acc + (defendedNotices[item.recordId] ? item.potentialPenaltyExposure : 0)
+    }, 0)
+  }, [currentSummary.lineItems, defendedNotices])
+
+  const totalDefendedCount = Object.keys(defendedNotices).length
+
   const filteredItems = useMemo(() => {
     return currentSummary.lineItems.filter(item => {
       if (filterCat !== 'ALL' && item.taxCategory !== filterCat) return false
@@ -340,8 +348,8 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
           </div>
         </div>
 
-        {/* 4 Simulator Output Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        {/* 5 Simulator Output Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <div style={{ background: '#fff', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
             <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Gross Revenue (Inflow)</span>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '3px 0 0' }}>
@@ -372,6 +380,16 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
               ₹{dynamicLiability.toLocaleString('en-IN')}
             </div>
             <span style={{ fontSize: '0.68rem', color: '#b91c1c' }}>Effective {regimeMeta.label.split(' ')[0]}</span>
+          </div>
+
+          <div style={{ background: '#faf5ff', padding: '10px 14px', borderRadius: 8, border: '1px solid #e9d5ff' }}>
+            <span style={{ fontSize: '0.7rem', color: '#6b21a8', fontWeight: 700, textTransform: 'uppercase' }}>Penalty Mitigated (₹)</span>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#7c3aed', margin: '3px 0 0' }}>
+              ₹{totalPenaltyMitigated.toLocaleString('en-IN')}
+            </div>
+            <span style={{ fontSize: '0.68rem', color: '#9333ea', fontWeight: 650 }}>
+              {totalDefendedCount} Notice{totalDefendedCount === 1 ? '' : 's'} Defended
+            </span>
           </div>
         </div>
       </div>

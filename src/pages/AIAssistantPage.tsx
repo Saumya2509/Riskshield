@@ -153,9 +153,23 @@ export default function AIAssistantPage() {
               </p>
             </div>
             <div className="d-page-actions">
-              <span style={{ fontSize: '0.82rem', color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                Batch: <strong>{report.batchId}</strong> ({report.totalRecords} records)
-              </span>
+              {!ctx.report ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newReport = runReconciliation()
+                    ctx.setReport(newReport)
+                  }}
+                  className="d-btn d-btn-primary"
+                  style={{ fontSize: '0.82rem', height: 34 }}
+                >
+                  ⚡ Load Demo Batch (500 Recs)
+                </button>
+              ) : (
+                <span style={{ fontSize: '0.82rem', color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                  Batch: <strong style={{ marginLeft: 4, color: '#0f172a' }}>{report.batchId}</strong> ({report.totalRecords} records)
+                </span>
+              )}
             </div>
           </header>
 

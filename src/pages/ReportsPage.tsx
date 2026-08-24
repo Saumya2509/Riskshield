@@ -235,7 +235,16 @@ export default function ReportsPage() {
               </p>
             </div>
             {rawReport && (
-              <div className="d-page-actions">
+              <div className="d-page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="d-btn d-btn-ghost"
+                  style={{ fontSize: '0.84rem', background: '#f1f5f9', border: '1px solid #cbd5e1' }}
+                  title="Print or Save Executive Brief as PDF"
+                >
+                  🖨️ Print Executive Audit (PDF)
+                </button>
                 <button
                   type="button"
                   onClick={() => setSignedOff(!signedOff)}
