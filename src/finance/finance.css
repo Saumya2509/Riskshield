@@ -497,12 +497,7 @@
   color: var(--c-sub);
 }
 
-/* ── Table inside run panel ──────────────────────────────────────────────── */
-.fin-rec-wrap {
-  overflow-x: auto;
-  max-height: 400px;
-  overflow-y: auto;
-}
+
 
 /* ── Q&A chat ────────────────────────────────────────────────────────────── */
 .fin-qa-card {
