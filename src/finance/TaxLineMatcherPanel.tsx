@@ -98,16 +98,31 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
         }
       }))
 
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
       setIsExecutingDefense(false)
       setDisputeItem(null)
       setDefenseToast(`✓ Statutory Dispute Solved for ${disputeItem.recordId}! Penalty risk of ₹${disputeItem.potentialPenaltyExposure.toLocaleString('en-IN')} mitigated.`)
       
-      // Smoothly scroll to top to show updated KPI and success toast
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // Enforce scroll to top across window and main containers
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
       const mainEl = document.querySelector('.d-main')
       if (mainEl) {
-        mainEl.scrollTo({ top: 0, behavior: 'smooth' })
+        mainEl.scrollTop = 0
       }
+
+      // Re-assert top position after React layout completes
+      setTimeout(() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+        window.scrollTo(0, 0)
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      }, 50)
 
       setTimeout(() => setDefenseToast(null), 6000)
     }, 600)
@@ -501,7 +516,10 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                       {defended ? (
                         <button
                           type="button"
-                          onClick={() => setDisputeItem(item)}
+                          onClick={(e) => {
+                            e.currentTarget.blur()
+                            setDisputeItem(item)
+                          }}
                           style={{
                             padding: '4px 10px',
                             borderRadius: 6,
@@ -518,7 +536,8 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                       ) : (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.currentTarget.blur()
                             setDisputeItem(item)
                             setSelectedDefenseOption(item.taxCategory === 'Foreign Withholding' ? 'opt-3' : (item.tdsApplicable ? 'opt-2' : 'opt-1'))
                           }}
