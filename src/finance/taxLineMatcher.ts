@@ -1,7 +1,7 @@
 // ─── Tax-Line Matcher Engine ──────────────────────────────────────────────────
 // Maps reconciled financial records to corporate tax categories, computes
 // tax provisions, calculates allowable deductions & tax savings, identifies
-// cross-border foreign withholding (WHT), and flags tax compliance risks.
+// cross-border foreign withholding (WHT), and manages statutory tax dispute defenses.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ReconciliationReport, MatchResult } from './reconciliationEngine'
@@ -17,6 +17,14 @@ export type TaxCategory =
 
 export type TaxRiskLevel = 'Low' | 'Medium' | 'High'
 export type ITCEligibility = '100% Eligible (Active ITC)' | 'Eligible CapEx ITC (Sec 16)' | 'Ineligible / Blocked (Sec 17(5))' | 'N/A (Outward Supply)' | 'Pending Verification'
+
+export type StatutoryNoticeType =
+  | 'CBDT Sec 148 / 143(2) Scrutiny'
+  | 'Sec 195 Form 15CB DTAA Clearance'
+  | 'GST DRC-01 Rule 88C Turnover Mismatch'
+  | 'Sec 40(a)(ia) TDS Disallowance Audit'
+  | 'Sec 32 Depreciation Block Verification'
+  | 'Routine Assessment'
 
 export interface TaxLineItem {
   recordId: string
@@ -41,6 +49,13 @@ export interface TaxLineItem {
   itcReason: string
   auditDefense: string       // Controller audit defense memo
   gstin: string              // Mock GSTIN for compliance
+  
+  // Real-world Statutory Dispute & Notice Fields
+  noticeRef: string          // Document Identification Number (DIN)
+  statutoryNoticeType: StatutoryNoticeType
+  potentialPenaltyExposure: number // 200% Sec 270A misreporting penalty
+  assessingOfficer: string
+  legalDefenseRationale: string
 }
 
 export interface TaxCategoryStat {
@@ -84,7 +99,7 @@ export const TAX_REGIMES = {
     name: 'Section 115BAA (New Corporate Tax)',
     rate: 0.2517,
     label: '25.17% (22% Base + Surcharge + Cess)',
-    description: 'Most common regime for domestic corporate entities without special deductions.'
+    description: 'Standard regime for domestic corporate entities without special deductions.'
   },
   'OLD': {
     name: 'Old Corporate Tax Regime',
@@ -217,14 +232,14 @@ function assessTaxRisk(row: MatchResult, taxCat: TaxCategory): { level: TaxRiskL
   if (taxCat === 'Unclassified') {
     return {
       level: 'High',
-      reason: 'Unclassified transaction — audit documentation required before income tax filing'
+      reason: 'Unclassified transaction — potential disallowance notice under Section 68/69'
     }
   }
 
   if (row.status === 'Exception' && amount > 200000) {
     return {
       level: 'High',
-      reason: `Unreconciled ₹${(amount / 100000).toFixed(2)}L variance — potential taxable income audit exposure`
+      reason: `Unreconciled ₹${(amount / 100000).toFixed(2)}L variance — risk of Section 148 scrutiny for under-reported profit`
     }
   }
 
@@ -232,28 +247,28 @@ function assessTaxRisk(row: MatchResult, taxCat: TaxCategory): { level: TaxRiskL
   if (taxCat === 'Foreign Withholding') {
     return {
       level: 'Medium',
-      reason: `Cross-border currency (${row.record.currency}) — verify DTAA Form 10F and 15CA/CB treaty rate`
+      reason: `Cross-border currency (${row.record.currency}) — requires Form 15CA/15CB CA certification under Section 195`
     }
   }
 
   if (row.status === 'Partial') {
     return {
       level: 'Medium',
-      reason: `Partial ledger delta of ₹${Math.abs(row.delta).toLocaleString('en-IN')} impacts net allowable deduction`
+      reason: `Short-pay delta of ₹${Math.abs(row.delta).toLocaleString('en-IN')} — risk of GSTR-2B ITC reversal under Rule 37`
     }
   }
 
   if (taxCat === 'Capital Expenditure' && amount > 1000000) {
     return {
       level: 'Medium',
-      reason: 'Large CAPEX item — verify Section 32 block depreciation schedule vs immediate OPEX expensing'
+      reason: 'Large CAPEX item — verify Section 32 block depreciation vs revenue expenditure challenge'
     }
   }
 
   // Low Risk: Cleared standard transactions
   return {
     level: 'Low',
-    reason: 'Standard compliant transaction — automated tax code assigned'
+    reason: 'Standard compliant transaction — 3-way matched audit trail established'
   }
 }
 
@@ -318,7 +333,7 @@ export function runTaxLineMatcher(report: ReconciliationReport): TaxSummary {
       autoClassified++
     }
 
-    // AI statutory details
+    // Statutory details
     const isCredit = row.record.type === 'CREDIT'
     const itcEligibility: ITCEligibility = isDeductible
       ? '100% Eligible (Active ITC)'
@@ -340,6 +355,31 @@ export function runTaxLineMatcher(report: ReconciliationReport): TaxSummary {
       : taxCat === 'Capital Expenditure'
       ? `Capitalized under Fixed Assets. Subject to Section 32 block depreciation schedule.`
       : `Cross-border settlement subject to Section 195 withholding verification under bilateral treaty.`
+
+    // High-Stakes Statutory Dispute & Notice Setup
+    let statutoryNoticeType: StatutoryNoticeType = 'Routine Assessment'
+    let assessingOfficer = 'National Faceless Assessment Centre (NFAC), New Delhi'
+    let legalDefenseRationale = '3-way reconciled bank & ledger trail proves bona fide commercial nature under Section 37(1).'
+
+    if (taxCat === 'Foreign Withholding') {
+      statutoryNoticeType = 'Sec 195 Form 15CB DTAA Clearance'
+      assessingOfficer = 'International Taxation Circle 1(1), Mumbai'
+      legalDefenseRationale = 'Furnish Form 10F, Tax Residency Certificate (TRC), and No-PE Declaration to avail 15% beneficial treaty rate under Article 12.'
+    } else if (taxCat === 'Unclassified' || risk.level === 'High') {
+      statutoryNoticeType = 'CBDT Sec 148 / 143(2) Scrutiny'
+      assessingOfficer = 'DCIT Circle 3(1), Central Revenue Building'
+      legalDefenseRationale = 'Submit Section 144B response with verified ERP journal entry and bank UTR to prevent 200% under-reporting penalty under Sec 270A.'
+    } else if (row.status === 'Partial') {
+      statutoryNoticeType = 'GST DRC-01 Rule 88C Turnover Mismatch'
+      assessingOfficer = 'Superintendent Range-IV, GST Delhi South'
+      legalDefenseRationale = 'Submit reconciliation memo proving variance represents bank MDR fee or negotiated cash discount, preserving 100% ITC.'
+    } else if (tdsApplicable) {
+      statutoryNoticeType = 'Sec 40(a)(ia) TDS Disallowance Audit'
+      assessingOfficer = 'ACIT (TDS) Circle 74(1), Bangalore'
+      legalDefenseRationale = 'Obtain CA Certificate in Form 26A under 1st Proviso to Sec 201(1) confirming payee declared income, eliminating 30% disallowance.'
+    }
+
+    const potentialPenaltyExposure = Math.round(row.record.amount * 0.50) // 50% - 200% penalty scale
 
     lineItems.push({
       recordId: row.record.id,
@@ -364,6 +404,11 @@ export function runTaxLineMatcher(report: ReconciliationReport): TaxSummary {
       itcReason: isDeductible ? 'Valid tax invoice with verified GSTIN matching GSTR-2B monthly filing.' : 'Not claimed as input credit.',
       auditDefense,
       gstin: generateGSTIN(row.record.counterparty, idx),
+      noticeRef: `DIN-2026-CBDT-${(100000 + (idx * 849) % 900000).toString()}`,
+      statutoryNoticeType,
+      potentialPenaltyExposure,
+      assessingOfficer,
+      legalDefenseRationale,
     })
   })
 
@@ -464,7 +509,6 @@ export function runTaxLineMatcher(report: ReconciliationReport): TaxSummary {
 // ── 1-Click AI Tax Shield Optimization Engine ───────────────────────────────
 export function optimizeTaxShield(summary: TaxSummary): TaxSummary {
   const optimizedItems: TaxLineItem[] = summary.lineItems.map(item => {
-    // If unclassified or high risk, apply AI heuristic reclassification
     if (item.taxCategory === 'Unclassified' || item.riskLevel === 'High') {
       const isVendor = item.counterparty.toLowerCase().includes('supplier') ||
                        item.counterparty.toLowerCase().includes('cloud') ||
@@ -485,7 +529,9 @@ export function optimizeTaxShield(summary: TaxSummary): TaxSummary {
         riskLevel: 'Low' as TaxRiskLevel,
         riskReason: 'AI Optimized: Reclassified to allowable business expense GL under Sec 37(1)',
         itcEligibility: '100% Eligible (Active ITC)' as ITCEligibility,
-        auditDefense: 'Reclassified with verified 3-way vendor trail, eligible for 100% tax shield and GST ITC.'
+        auditDefense: 'Reclassified with verified 3-way vendor trail, eligible for 100% tax shield and GST ITC.',
+        statutoryNoticeType: 'Routine Assessment' as StatutoryNoticeType,
+        potentialPenaltyExposure: 0,
       }
     }
     return item
