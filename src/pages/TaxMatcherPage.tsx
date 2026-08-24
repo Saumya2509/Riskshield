@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
@@ -10,6 +10,14 @@ import '../finance/finance.css'
 export default function TaxMatcherPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const ctx = useFinanceContext()
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
   
   // If no report in context (new user), use clean empty zero-state summary
   const report = ctx.report

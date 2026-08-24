@@ -101,6 +101,14 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
       setIsExecutingDefense(false)
       setDisputeItem(null)
       setDefenseToast(`✓ Statutory Dispute Solved for ${disputeItem.recordId}! Penalty risk of ₹${disputeItem.potentialPenaltyExposure.toLocaleString('en-IN')} mitigated.`)
+      
+      // Smoothly scroll to top to show updated KPI and success toast
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      const mainEl = document.querySelector('.d-main')
+      if (mainEl) {
+        mainEl.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+
       setTimeout(() => setDefenseToast(null), 6000)
     }, 600)
   }
