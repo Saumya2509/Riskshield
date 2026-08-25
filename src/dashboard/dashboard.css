@@ -710,3 +710,108 @@
   background: #1d4ed8;
 }
 
+/* ─── PRINT & PDF EXPORT STYLESHEET ─────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+
+  /* Hide interactive web chrome & buttons */
+  header.d-topnav,
+  .d-topnav,
+  aside.d-sidebar,
+  .d-sidebar,
+  .d-backdrop,
+  .d-page-actions,
+  button,
+  .d-btn,
+  .fin-btn,
+  .d-side-foot,
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset layout containers to full paper width */
+  html,
+  body,
+  #root,
+  .dash-app,
+  .fin-page,
+  .d-shell,
+  .d-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    min-height: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .d-pagehead {
+    display: none !important;
+  }
+
+  .fin-card {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    margin-bottom: 14px !important;
+    padding: 14px 18px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .fin-two-col {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .fin-rec-wrap,
+  .d-table-wrap {
+    overflow: visible !important;
+    width: 100% !important;
+    border: none !important;
+  }
+
+  table.fin-tbl,
+  table.d-table {
+    width: 100% !important;
+    min-width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 7.5pt !important;
+  }
+
+  table.fin-tbl th,
+  table.fin-tbl td,
+  table.d-table th,
+  table.d-table td {
+    padding: 3px 5px !important;
+    border: 1px solid #cbd5e1 !important;
+    white-space: normal !important;
+  }
+
+  table.fin-tbl tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+

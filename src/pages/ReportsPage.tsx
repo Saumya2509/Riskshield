@@ -235,6 +235,28 @@ export default function ReportsPage() {
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} activeId="reports" />
         <main className="d-main">
 
+          {/* ─── PRINT-ONLY EXECUTIVE BRIEF HEADER ──────────────────────────── */}
+          <div className="print-only" style={{ display: 'none', marginBottom: 20, borderBottom: '2px solid #0f172a', paddingBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.4rem', fontWeight: 850, color: '#0f172a' }}>RiskShield™ Executive Audit Brief</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: '#dcfce7', color: '#15803d', borderRadius: 999 }}>
+                    {signedOff ? 'CONTROLLER SIGNED-OFF' : 'CERTIFIED AUDIT TRAIL'}
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#475569' }}>
+                  Autonomous 3-Way Multi-Source Reconciliation &amp; Statutory Compliance Schedule
+                </p>
+              </div>
+              <div style={{ textAlign: 'right', fontSize: '0.76rem', color: '#475569', lineHeight: 1.4 }}>
+                <div>Batch: <strong style={{ color: '#0f172a' }}>{report.batchId}</strong></div>
+                <div>Audited Records: <strong style={{ color: '#0f172a' }}>{report.totalRecords}</strong></div>
+                <div>Generated: <strong>{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong></div>
+              </div>
+            </div>
+          </div>
+
           {/* Page Header */}
           <header className="d-pagehead">
             <div>
