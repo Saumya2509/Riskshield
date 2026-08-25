@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import type { TaxSummary, TaxCategory, TaxLineItem } from './taxLineMatcher'
 import { TAX_REGIMES } from './taxLineMatcher'
+import { useFinanceContext } from './FinanceContext'
 
 interface Props {
   taxSummary: TaxSummary
@@ -27,16 +28,17 @@ function riskBadge(level: 'Low' | 'Medium' | 'High') {
 }
 
 export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: Props) {
-  const [currentSummary] = useState<TaxSummary>(initialTaxSummary)
+  const ctx = useFinanceContext()
+  const defendedNotices = ctx.defendedNotices
+  const defendNotice = ctx.defendNotice
+
+  const currentSummary = initialTaxSummary
   const [selectedRegime, setSelectedRegime] = useState<'115BAA' | 'OLD' | '115BAB'>('115BAA')
   const [filterCat, setFilterCat] = useState<string>('ALL')
   const [filterRisk, setFilterRisk] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [showJurisdictions, setShowJurisdictions] = useState<boolean>(false)
   const [defenseToast, setDefenseToast] = useState<string | null>(null)
-
-  // Map of defended/resolved statutory notices
-  const [defendedNotices, setDefendedNotices] = useState<Record<string, { method: string; certNumber: string; penaltyMitigated: number; timestamp: string }>>({})
 
   // Active Statutory Dispute Modal State
   const [disputeItem, setDisputeItem] = useState<TaxLineItem | null>(null)
@@ -88,15 +90,12 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
         methodTitle = 'Rule 88C DRC-01 Reconciliation Schedule Submitted'
       }
 
-      setDefendedNotices(prev => ({
-        ...prev,
-        [disputeItem.recordId]: {
-          method: methodTitle,
-          certNumber: `ACK-${Math.floor(100000000 + Math.random() * 900000000)}`,
-          penaltyMitigated: disputeItem.potentialPenaltyExposure,
-          timestamp: new Date().toLocaleTimeString(),
-        }
-      }))
+      defendNotice(disputeItem.recordId, {
+        method: methodTitle,
+        certNumber: `ACK-${Math.floor(100000000 + Math.random() * 900000000)}`,
+        penaltyMitigated: disputeItem.potentialPenaltyExposure,
+        timestamp: new Date().toLocaleTimeString(),
+      })
 
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur()

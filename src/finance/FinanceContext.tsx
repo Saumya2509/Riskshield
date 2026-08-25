@@ -15,6 +15,13 @@ export interface ResolutionFix {
   timestamp: string
 }
 
+export interface DefendedNotice {
+  method: string
+  certNumber: string
+  penaltyMitigated: number
+  timestamp: string
+}
+
 interface FinanceContextType {
   report: ReconciliationReport | null
   mlResult: MLBatchResult | null
@@ -22,6 +29,7 @@ interface FinanceContextType {
   activeFileName: string | null
   recordCount: number
   resolvedMap: Record<string, ResolutionFix>
+  defendedNotices: Record<string, DefendedNotice>
   setReport: (r: ReconciliationReport) => void
   setMLResult: (r: MLBatchResult) => void
   setActiveFileName: (name: string) => void
@@ -29,6 +37,8 @@ interface FinanceContextType {
   resetReconciliation: () => void
   applyFix: (recordId: string, fix: ResolutionFix) => void
   resetFixes: () => void
+  defendNotice: (recordId: string, info: DefendedNotice) => void
+  resetDefendedNotices: () => void
   saveFixesToMultiSource: () => ReconciliationReport | null
 }
 
@@ -39,6 +49,7 @@ const FinanceContext = createContext<FinanceContextType>({
   activeFileName: null,
   recordCount: 500,
   resolvedMap: {},
+  defendedNotices: {},
   setReport: () => {},
   setMLResult: () => {},
   setActiveFileName: () => {},
@@ -46,6 +57,8 @@ const FinanceContext = createContext<FinanceContextType>({
   resetReconciliation: () => {},
   applyFix: () => {},
   resetFixes: () => {},
+  defendNotice: () => {},
+  resetDefendedNotices: () => {},
   saveFixesToMultiSource: () => null,
 })
 
@@ -56,6 +69,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
   const [activeFileName, setActiveFileName] = useState<string | null>(null)
   const [recordCount, setRecordCount] = useState<number>(500)
   const [resolvedMap, setResolvedMap] = useState<Record<string, ResolutionFix>>({})
+  const [defendedNotices, setDefendedNotices] = useState<Record<string, DefendedNotice>>({})
 
   function setReport(r: ReconciliationReport) {
     setReportState(r)
@@ -129,19 +143,28 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
     return updatedReport
   }
 
+  function defendNotice(recordId: string, info: DefendedNotice) {
+    setDefendedNotices(prev => ({ ...prev, [recordId]: info }))
+  }
+
+  function resetDefendedNotices() {
+    setDefendedNotices({})
+  }
+
   function resetReconciliation() {
     setReportState(null)
     setMLResultState(null)
     setActiveFileName(null)
     setLastRunAt(null)
     setResolvedMap({})
+    setDefendedNotices({})
   }
 
   return (
     <FinanceContext.Provider value={{
-      report, mlResult, lastRunAt, activeFileName, recordCount, resolvedMap,
+      report, mlResult, lastRunAt, activeFileName, recordCount, resolvedMap, defendedNotices,
       setReport, setMLResult, setActiveFileName, setRecordCount, resetReconciliation,
-      applyFix, resetFixes, saveFixesToMultiSource
+      applyFix, resetFixes, defendNotice, resetDefendedNotices, saveFixesToMultiSource
     }}>
       {children}
     </FinanceContext.Provider>
