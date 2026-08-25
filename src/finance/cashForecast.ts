@@ -69,7 +69,7 @@ function labels(dateStr: string) {
   }
 }
 
-export function buildForecast(report: ReconciliationReport): CashForecast {
+export function buildForecast(report: ReconciliationReport, numDays: number = 7): CashForecast {
   // ── Inputs from reconciliation ───────────────────────────────────────────
   const cleared = report.clearedAmount
 
@@ -93,26 +93,45 @@ export function buildForecast(report: ReconciliationReport): CashForecast {
   const routineInflow  = avgTxAmount * 1.8   // routine receivables per day
   const routineOutflow = avgTxAmount * 1.4   // routine payables per day
 
-  // ── Build 7-day schedule ─────────────────────────────────────────────────
+  // ── Build multi-day schedule (7, 14, or 30 days) ───────────────────────────
   const BASE = '2026-08-21'   // Thursday (day before reconciliation closes)
   let running = openingBalance  // start from actual opening, NOT post-cleared
 
   const forecastDays: ForecastDay[] = []
+  const daysToGenerate = Math.max(7, Math.min(30, numDays))
 
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < daysToGenerate; i++) {
     const date = addDays(BASE, i + 1)
     const { label, shortLabel, dow } = labels(date)
     const isWeekend = dow === 0 || dow === 6
     const mult = DOW_MULT[dow]
 
-    // Settlement inflow: cleared funds arriving T+1 … T+5
-    const settledAmount = i < SETTLE_WEIGHTS.length ? cleared * SETTLE_WEIGHTS[i] : 0
+    // Settlement inflow: cleared funds arriving T+1 … T+5, plus recurring batch cycles for weeks 2-4
+    let settledAmount = 0
+    if (i < SETTLE_WEIGHTS.length) {
+      settledAmount = cleared * SETTLE_WEIGHTS[i]
+    } else if (!isWeekend) {
+      // Periodic rolling invoice collections in extended forecast
+      const cycleMultiplier = (i % 7 === 1 || i % 7 === 3) ? 0.16 : 0.08
+      settledAmount = (cleared * cycleMultiplier) * (1 + Math.sin(i * 0.5) * 0.15)
+    }
 
-    // AR recovery: days 3–7 (after settlement clears the backlog)
-    const arDay = i >= 2 ? openARValue * [0.25, 0.30, 0.25, 0.15, 0.05][i - 2] : 0
+    // AR recovery: days 3–7 (after settlement clears the backlog), with steady collection tail
+    let arDay = 0
+    if (i >= 2 && i < 7) {
+      arDay = openARValue * [0.25, 0.30, 0.25, 0.15, 0.05][i - 2]
+    } else if (i >= 7 && !isWeekend) {
+      arDay = (openARValue * 0.04) * (1 + (i % 5 === 0 ? 0.3 : 0))
+    }
 
-    // AP outflows: days 1–4
-    const apDay = i < 4 ? openAPValue * [0.40, 0.30, 0.20, 0.10][i] : 0
+    // AP outflows: days 1–4, plus mid-month and month-end payroll/vendor cycles
+    let apDay = 0
+    if (i < 4) {
+      apDay = openAPValue * [0.40, 0.30, 0.20, 0.10][i]
+    } else if (i === 14 || i === 28) {
+      // Bi-weekly vendor batch payment run
+      apDay = openAPValue * 0.35
+    }
 
     // Routine flows, scaled by day-of-week activity
     const routeIn  = routineInflow  * mult
@@ -124,6 +143,9 @@ export function buildForecast(report: ReconciliationReport): CashForecast {
     const opening          = running
     running += netFlow
 
+    // Epistemic confidence degrades smoothly across the forecast window
+    const confidencePct = Math.max(35, Math.round(95 - (i / (daysToGenerate - 1 || 1)) * 48))
+
     forecastDays.push({
       date, label, shortLabel,
       dayOfWeek: dow,
@@ -133,7 +155,7 @@ export function buildForecast(report: ReconciliationReport): CashForecast {
       netFlow,
       closingBalance:  Math.round(running),
       settledAmount:   Math.round(settledAmount),
-      confidence:      Math.max(40, 95 - i * 10),
+      confidence:      confidencePct,
       isWeekend,
     })
   }
@@ -154,8 +176,8 @@ export function buildForecast(report: ReconciliationReport): CashForecast {
     openARValue:    Math.round(openARValue),
     openAPValue:    Math.round(openAPValue),
     totalSettling:  Math.round(cleared),
-    coverageRatio:  balances[troughIdx] / balances[peakIdx],
+    coverageRatio:  balances[troughIdx] / (balances[peakIdx] || 1),
     netChangeValue: Math.round(expectedClosing - openingBalance),
-    netChangePct:   ((expectedClosing - openingBalance) / openingBalance) * 100,
+    netChangePct:   ((expectedClosing - openingBalance) / (openingBalance || 1)) * 100,
   }
 }

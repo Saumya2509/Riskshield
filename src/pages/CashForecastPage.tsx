@@ -12,9 +12,9 @@ export default function CashForecastPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const ctx = useFinanceContext()
   const report = ctx.report
-  const forecast = report ? buildForecast(report) : null
-
   const [simDays, setSimDays] = useState(7)
+
+  const forecast = report ? buildForecast(report, simDays) : null
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -37,7 +37,7 @@ export default function CashForecastPage() {
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 Forward Cash Forecaster
                 <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 9px', background: report ? '#dbeafe' : '#f1f5f9', color: report ? '#1e40af' : '#64748b', borderRadius: 999 }}>
-                  {report ? 'T+1 … T+7 Simulation' : 'Zero State (Awaiting Ingest)'}
+                  {report ? `T+1 … T+${simDays} Days Simulation` : 'Zero State (Awaiting Ingest)'}
                 </span>
               </h1>
               <p>
@@ -100,7 +100,7 @@ export default function CashForecastPage() {
           ) : (
             <>
               {/* 1. Cash Forecast SVG Trajectory & Day Selector */}
-              <CashForecastChart forecast={forecast} />
+              <CashForecastChart forecast={forecast} simDays={simDays} onSimDaysChange={setSimDays} />
 
               {/* 2. Donut Pie Chart & Daily Delta Histogram with Stress-Testing */}
               <CashCompositionCharts forecast={forecast} />
