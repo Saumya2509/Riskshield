@@ -211,10 +211,18 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     const udin = `26084920AAAA${Math.floor(1000 + Math.random() * 9000)}`
 
-    const printWindow = window.open('', '_blank', 'width=920,height=1000')
-    if (!printWindow) {
-      alert('Please allow popups to generate and download the Statutory Defense Certificate PDF.')
-      return
+    // Create or reuse hidden iframe to completely bypass browser popup blockers
+    let iframe = document.getElementById('statutory-cert-iframe') as HTMLIFrameElement
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.id = 'statutory-cert-iframe'
+      iframe.style.position = 'fixed'
+      iframe.style.top = '-9999px'
+      iframe.style.left = '-9999px'
+      iframe.style.width = '0'
+      iframe.style.height = '0'
+      iframe.style.border = '0'
+      document.body.appendChild(iframe)
     }
 
     const certificateHtml = `<!DOCTYPE html>
@@ -246,16 +254,10 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
     .dsc-stamp { border: 2px solid #16a34a; background: #f0fdf4; border-radius: 8px; padding: 10px 16px; text-align: center; color: #166534; min-width: 220px; }
     @media print {
       body { padding: 0; }
-      .no-print { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="no-print" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 10px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
-    <span style="font-size: 9pt; color: #64748b;">Statutory Defense Verification Certificate · Document ID: <strong>${item.recordId}</strong></span>
-    <button onclick="window.print()" style="padding: 7px 18px; background: #15803d; color: #fff; border: 0; border-radius: 6px; font-weight: 750; cursor: pointer; font-size: 9.5pt; box-shadow: 0 2px 6px rgba(21,128,61,0.3);">🖨️ Print / Save as PDF</button>
-  </div>
-
   <div class="header">
     <div class="emblem">🏛️</div>
     <div class="gov-title">Government of India · Income Tax Department</div>
@@ -343,18 +345,24 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
       <div style="font-size: 7pt; color: #15803d; font-weight: 700; margin-top: 3px;">VERIFIED AUTHENTIC</div>
     </div>
   </div>
-
-  <script>
-    window.onload = function() {
-      setTimeout(function() { window.print(); }, 400);
-    }
-  </script>
 </body>
 </html>`
 
-    printWindow.document.open()
-    printWindow.document.write(certificateHtml)
-    printWindow.document.close()
+    const doc = iframe.contentWindow?.document || iframe.contentDocument
+    if (doc) {
+      doc.open()
+      doc.write(certificateHtml)
+      doc.close()
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus()
+          iframe.contentWindow?.print()
+        } catch {
+          window.print()
+        }
+      }, 300)
+    }
   }
 
   // Export CSV with UTF-8 BOM
