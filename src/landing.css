@@ -415,14 +415,22 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
+}
 
-  .footer-top {
-    grid-template-columns: 1fr 1fr;
+@media (max-width: 900px) {
+  .nav-links {
+    display: none !important;
+  }
+  .mobile-nav-toggle {
+    display: block !important;
   }
 }
 
-@media (max-width: 640px) {
-  .footer-top {
-    grid-template-columns: 1fr;
-  }
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(96, 165, 250, 0.8); }
+  50% { opacity: 0.5; transform: scale(0.85); box-shadow: 0 0 2px rgba(96, 165, 250, 0.2); }
+}
+
+.badge-dot {
+  animation: pulseGlow 2s infinite ease-in-out;
 }

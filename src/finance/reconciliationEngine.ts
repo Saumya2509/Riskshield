@@ -167,8 +167,21 @@ function classifyException(
 
 // ─── Main reconciliation function ────────────────────────────────────────────
 
+function getReconSettings() {
+  if (typeof window === 'undefined') return { fuzzyTol: 0.015, dateWindow: 2, partialMax: 0.20 }
+  const fuzzyTol = parseFloat(localStorage.getItem('rs_fuzzyTol') || '1.5') / 100
+  const dateWindow = parseFloat(localStorage.getItem('rs_dateWindow') || '2')
+  const partialMax = parseFloat(localStorage.getItem('rs_partialMax') || '20') / 100
+  return {
+    fuzzyTol: isNaN(fuzzyTol) || fuzzyTol <= 0 ? 0.015 : fuzzyTol,
+    dateWindow: isNaN(dateWindow) || dateWindow <= 0 ? 2 : dateWindow,
+    partialMax: isNaN(partialMax) || partialMax <= 0 ? 0.20 : partialMax,
+  }
+}
+
 export function runReconciliation(input?: ReconciliationInput): ReconciliationReport {
   const t0 = performance.now()
+  const settings = getReconSettings()
 
   const bankStatements = input?.bankStatements ?? defaultBank
   const ledgerEntries = input?.ledgerEntries ?? defaultLedger
@@ -235,12 +248,12 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
       continue
     }
 
-    // ── Pass 2: Fuzzy (±1% amount AND ±2 days date) ───────────────────────
+    // ── Pass 2: Fuzzy (Configurable tolerance & date window) ───────────────
     if (
       ldg &&
       record.currency === ldg.currency &&
-      pctDiff(record.amount, ldg.amount) <= 0.01 &&
-      daysBetween(record.date, ldg.date) <= 2
+      pctDiff(record.amount, ldg.amount) <= settings.fuzzyTol &&
+      daysBetween(record.date, ldg.date) <= settings.dateWindow
     ) {
       const delta = Math.abs(record.amount - ldg.amount)
       const deltaPct = pctDiff(record.amount, ldg.amount)
@@ -266,12 +279,12 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
       continue
     }
 
-    // ── Pass 3: Partial (same ref, amount diff 1%–20%) ────────────────────
+    // ── Pass 3: Partial (same ref, amount diff > fuzzyTol and < partialMax) ─
     if (
       ldg &&
       record.currency === ldg.currency &&
-      pctDiff(record.amount, ldg.amount) > 0.01 &&
-      pctDiff(record.amount, ldg.amount) < 0.20
+      pctDiff(record.amount, ldg.amount) > settings.fuzzyTol &&
+      pctDiff(record.amount, ldg.amount) < settings.partialMax
     ) {
       const delta = Math.abs(record.amount - ldg.amount)
       const deltaPct = pctDiff(record.amount, ldg.amount)

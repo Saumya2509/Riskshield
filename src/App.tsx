@@ -42,12 +42,18 @@ export default function App() {
 
   useEffect(() => {
     const onHash = () => {
+      const hash = window.location.hash.toLowerCase()
+      const isPageRoute = hash.startsWith('#/')
       setView(currentView())
-      window.scrollTo(0, 0)
-      document.documentElement.scrollTop = 0
-      document.body.scrollTop = 0
-      const mainEl = document.querySelector('.d-main')
-      if (mainEl) mainEl.scrollTop = 0
+
+      // Only force scroll to top on actual page route transitions, not in-page anchor jumps
+      if (isPageRoute) {
+        window.scrollTo(0, 0)
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+        const mainEl = document.querySelector('.d-main')
+        if (mainEl) mainEl.scrollTop = 0
+      }
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)

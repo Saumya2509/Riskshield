@@ -6,6 +6,7 @@ import Features from '../components/Features'
 import InteractiveTerminal from '../components/InteractiveTerminal'
 import FAQ from '../components/FAQ'
 import FinalCTA from '../components/FinalCTA'
+import Footer from '../components/Footer'
 import '../landing.css'
 
 export default function Landing() {
@@ -21,6 +22,7 @@ export default function Landing() {
         <FAQ />
         <FinalCTA />
       </main>
+      <Footer />
     </div>
   )
 }

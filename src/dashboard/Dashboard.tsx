@@ -65,7 +65,7 @@ export default function Dashboard() {
                   <span>Match Rate</span>
                 </div>
                 <div className="d-fin-kpi-chip" style={{ color: '#60a5fa' }}>
-                  <strong>${(report.clearedAmount / 1000).toFixed(0)}K</strong>
+                  <strong>₹{report.clearedAmount >= 100000 ? `${(report.clearedAmount / 100000).toFixed(1)}L` : `${(report.clearedAmount / 1000).toFixed(0)}K`}</strong>
                   <span>Cleared</span>
                 </div>
                 <div className="d-fin-kpi-chip" style={{ color: '#f87171' }}>
