@@ -568,205 +568,290 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
       )}
 
       {/* ─── HIGH-STAKES STATUTORY TAX DEFENSE & DISPUTE TERMINAL ─────────── */}
-      {disputeItem && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.8)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: 20
-        }}>
+      {disputeItem && (() => {
+        const defendedData = defendedNotices[disputeItem.recordId]
+        const isDefended = !!defendedData
+
+        return (
           <div style={{
-            background: '#ffffff',
-            borderRadius: 16,
-            width: '100%',
-            maxWidth: 680,
-            boxShadow: '0 25px 60px -15px rgba(0,0,0,0.6)',
-            border: '1px solid #cbd5e1',
-            overflow: 'hidden',
-            animation: 'scaleUp 0.2s ease-out'
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.8)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20
           }}>
-            {/* Terminal Header */}
-            <div style={{ padding: '18px 24px', background: '#0f172a', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>⚖️ Statutory Tax Notice Defense Terminal</span>
-                  <span style={{ background: '#dc2626', color: '#fff', fontSize: '0.68rem', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
-                    {disputeItem.statutoryNoticeType}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 680,
+              boxShadow: '0 25px 60px -15px rgba(0,0,0,0.6)',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              animation: 'scaleUp 0.2s ease-out'
+            }}>
+              {/* Terminal Header */}
+              <div style={{ padding: '18px 24px', background: isDefended ? '#064e3b' : '#0f172a', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                      {isDefended ? '📜 Certified Statutory Tax Defense Record' : '⚖️ Statutory Tax Notice Defense Terminal'}
+                    </span>
+                    <span style={{
+                      background: isDefended ? '#10b981' : '#dc2626',
+                      color: '#fff',
+                      fontSize: '0.68rem',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontWeight: 700
+                    }}>
+                      {isDefended ? '✓ DEFENSE CERTIFIED' : disputeItem.statutoryNoticeType}
+                    </span>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: isDefended ? '#a7f3d0' : '#94a3b8' }}>
+                    DIN: <strong className="fin-mono" style={{ color: isDefended ? '#6ee7b7' : '#60a5fa' }}>{disputeItem.noticeRef}</strong> · Jurisdiction: <strong>{disputeItem.assessingOfficer}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+                    setDisputeItem(null)
+                  }}
+                  style={{ background: 'transparent', border: 0, color: isDefended ? '#a7f3d0' : '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Terminal Body */}
+              <div style={{ padding: '20px 24px', maxHeight: '72vh', overflowY: 'auto' }}>
+                {/* Defended Banner */}
+                {isDefended && (
+                  <div style={{
+                    padding: '14px 18px',
+                    background: '#f0fdf4',
+                    border: '1px solid #86efac',
+                    borderRadius: 10,
+                    marginBottom: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    boxShadow: '0 2px 6px rgba(22,163,74,0.08)'
+                  }}>
+                    <span style={{ fontSize: '1.8rem' }}>🏛️</span>
+                    <div>
+                      <strong style={{ color: '#166534', fontSize: '0.9rem', display: 'block', marginBottom: 2 }}>
+                        {defendedData.method}
+                      </strong>
+                      <span style={{ color: '#15803d', fontSize: '0.78rem', lineHeight: 1.5, display: 'block' }}>
+                        Ack Cert No: <strong className="fin-mono" style={{ color: '#14532d' }}>{defendedData.certNumber}</strong> · 
+                        Mitigated Penalty: <strong>₹{defendedData.penaltyMitigated.toLocaleString('en-IN')}</strong> · 
+                        Filed At: <strong>{defendedData.timestamp}</strong> · 
+                        Status: <strong style={{ color: '#15803d' }}>DSC Class-3 Signed &amp; Accepted</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Financial Exposure Risk Summary */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
+                  <div>
+                    <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Transaction Value</small>
+                    <strong style={{ display: 'block', fontSize: '1.1rem', color: '#0f172a' }}>₹{disputeItem.amount.toLocaleString('en-IN')}</strong>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Counterparty: {disputeItem.counterparty.split(' ')[0]}</span>
+                  </div>
+                  <div>
+                    <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Disallowance Exposure</small>
+                    <strong style={{ display: 'block', fontSize: '1.1rem', color: isDefended ? '#16a34a' : '#dc2626' }}>
+                      {isDefended ? '₹0 (Mitigated)' : `₹${disputeItem.taxAmount.toLocaleString('en-IN')}`}
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', color: isDefended ? '#15803d' : '#991b1b' }}>@ 25.17% Corporate Tax</span>
+                  </div>
+                  <div>
+                    <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Sec 270A Penalty Risk</small>
+                    <strong style={{ display: 'block', fontSize: '1.1rem', color: isDefended ? '#16a34a' : '#b91c1c' }}>
+                      {isDefended ? '₹0 (Protected)' : `₹${disputeItem.potentialPenaltyExposure.toLocaleString('en-IN')}`}
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', color: isDefended ? '#15803d' : '#7f1d1d' }}>200% Misreporting Scale</span>
+                  </div>
+                </div>
+
+                {/* Allegation & Statutory Issue Details */}
+                <div style={{ padding: '12px 14px', background: isDefended ? '#f0fdf4' : '#fef2f2', border: `1px solid ${isDefended ? '#bbf7d0' : '#fecaca'}`, borderRadius: 8, marginBottom: 18 }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: isDefended ? '#166534' : '#991b1b' }}>
+                    🏛️ Assessing Officer Audit Finding &amp; Challenge
                   </span>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: isDefended ? '#14532d' : '#7f1d1d', lineHeight: 1.5 }}>
+                    {disputeItem.legalDefenseRationale}
+                  </p>
                 </div>
-                <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                  DIN: <strong className="fin-mono" style={{ color: '#60a5fa' }}>{disputeItem.noticeRef}</strong> · Jurisdiction: <strong>{disputeItem.assessingOfficer}</strong>
+
+                {/* Hard Defense Options */}
+                <p style={{ fontSize: '0.76rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {isDefended ? 'Applied Legal &amp; CA Defense Mechanism:' : 'Select Expert Legal &amp; CA Defense Mechanism:'}
                 </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDisputeItem(null)}
-                style={{ background: 'transparent', border: 0, color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* Terminal Body */}
-            <div style={{ padding: '20px 24px', maxHeight: '72vh', overflowY: 'auto' }}>
-              {/* Financial Exposure Risk Summary */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
-                <div>
-                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Transaction Value</small>
-                  <strong style={{ display: 'block', fontSize: '1.1rem', color: '#0f172a' }}>₹{disputeItem.amount.toLocaleString('en-IN')}</strong>
-                  <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Counterparty: {disputeItem.counterparty.split(' ')[0]}</span>
-                </div>
-                <div>
-                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Disallowance Exposure</small>
-                  <strong style={{ display: 'block', fontSize: '1.1rem', color: '#dc2626' }}>₹{disputeItem.taxAmount.toLocaleString('en-IN')}</strong>
-                  <span style={{ fontSize: '0.68rem', color: '#991b1b' }}>@ 25.17% Corporate Tax</span>
-                </div>
-                <div>
-                  <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Sec 270A Penalty Risk</small>
-                  <strong style={{ display: 'block', fontSize: '1.1rem', color: '#b91c1c' }}>₹{disputeItem.potentialPenaltyExposure.toLocaleString('en-IN')}</strong>
-                  <span style={{ fontSize: '0.68rem', color: '#7f1d1d' }}>200% Misreporting Scale</span>
-                </div>
-              </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: isDefended ? 'none' : 'auto', opacity: isDefended ? 0.85 : 1 }}>
+                  <div
+                    onClick={() => setSelectedDefenseOption('opt-1')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${selectedDefenseOption === 'opt-1' ? '#2563eb' : '#e2e8f0'}`,
+                      background: selectedDefenseOption === 'opt-1' ? '#eff6ff' : '#fff',
+                      cursor: isDefended ? 'default' : 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
+                      📑 Option 1: File Section 144B Electronic Written Submission with 3-Way Reconciled ERP Trail
+                    </strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
+                      Uploads verified cross-matching bank UTR voucher, invoice E-way QR code, and ledger entry to prove bona fide trade expenditure under Section 37(1).
+                    </p>
+                  </div>
 
-              {/* Allegation & Statutory Issue Details */}
-              <div style={{ padding: '12px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, marginBottom: 18 }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#991b1b' }}>
-                  🏛️ Assessing Officer Audit Finding &amp; Challenge
-                </span>
-                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#7f1d1d', lineHeight: 1.5 }}>
-                  {disputeItem.legalDefenseRationale}
-                </p>
-              </div>
+                  <div
+                    onClick={() => setSelectedDefenseOption('opt-2')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${selectedDefenseOption === 'opt-2' ? '#2563eb' : '#e2e8f0'}`,
+                      background: selectedDefenseOption === 'opt-2' ? '#eff6ff' : '#fff',
+                      cursor: isDefended ? 'default' : 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
+                      📜 Option 2: Upload Form 26A / Chartered Accountant Certificate under 1st Proviso to Sec 201(1)
+                    </strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
+                      Certifies payee counterparty furnished ITR and paid taxes, eliminating the 30% statutory disallowance under Section 40(a)(ia).
+                    </p>
+                  </div>
 
-              {/* Hard Defense Options */}
-              <p style={{ fontSize: '0.76rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
-                Select Expert Legal &amp; CA Defense Mechanism:
-              </p>
+                  <div
+                    onClick={() => setSelectedDefenseOption('opt-3')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${selectedDefenseOption === 'opt-3' ? '#2563eb' : '#e2e8f0'}`,
+                      background: selectedDefenseOption === 'opt-3' ? '#eff6ff' : '#fff',
+                      cursor: isDefended ? 'default' : 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
+                      🌐 Option 3: Form 15CB Certification &amp; DTAA Article 12 Beneficial Rate Clearance
+                    </strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
+                      Validates Tax Residency Certificate (TRC), Form 10F, and No-PE affidavit for Authorized Dealer Bank remittance clearance.
+                    </p>
+                  </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div
-                  onClick={() => setSelectedDefenseOption('opt-1')}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${selectedDefenseOption === 'opt-1' ? '#2563eb' : '#e2e8f0'}`,
-                    background: selectedDefenseOption === 'opt-1' ? '#eff6ff' : '#fff',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
-                    📑 Option 1: File Section 144B Electronic Written Submission with 3-Way Reconciled ERP Trail
-                  </strong>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
-                    Uploads verified cross-matching bank UTR voucher, invoice E-way QR code, and ledger entry to prove bona fide trade expenditure under Section 37(1).
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setSelectedDefenseOption('opt-2')}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${selectedDefenseOption === 'opt-2' ? '#2563eb' : '#e2e8f0'}`,
-                    background: selectedDefenseOption === 'opt-2' ? '#eff6ff' : '#fff',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
-                    📜 Option 2: Upload Form 26A / Chartered Accountant Certificate under 1st Proviso to Sec 201(1)
-                  </strong>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
-                    Certifies payee counterparty furnished ITR and paid taxes, eliminating the 30% statutory disallowance under Section 40(a)(ia).
-                  </p>
+                  <div
+                    onClick={() => setSelectedDefenseOption('opt-4')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: `1.5px solid ${selectedDefenseOption === 'opt-4' ? '#2563eb' : '#e2e8f0'}`,
+                      background: selectedDefenseOption === 'opt-4' ? '#eff6ff' : '#fff',
+                      cursor: isDefended ? 'default' : 'pointer'
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
+                      ⚖️ Option 4: File GST DRC-01 Rule 88C Turnover Reconciliation with Bank MDR Deduction Schedule
+                    </strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
+                      Reconciles outward turnover difference between GSTR-1 vs GSTR-3B, proving difference is gateway fees and protecting input tax credit (ITC).
+                    </p>
+                  </div>
                 </div>
 
-                <div
-                  onClick={() => setSelectedDefenseOption('opt-3')}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${selectedDefenseOption === 'opt-3' ? '#2563eb' : '#e2e8f0'}`,
-                    background: selectedDefenseOption === 'opt-3' ? '#eff6ff' : '#fff',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
-                    🌐 Option 3: Form 15CB Certification &amp; DTAA Article 12 Beneficial Rate Clearance
-                  </strong>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
-                    Validates Tax Residency Certificate (TRC), Form 10F, and No-PE affidavit for Authorized Dealer Bank remittance clearance.
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setSelectedDefenseOption('opt-4')}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${selectedDefenseOption === 'opt-4' ? '#2563eb' : '#e2e8f0'}`,
-                    background: selectedDefenseOption === 'opt-4' ? '#eff6ff' : '#fff',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
-                    ⚖️ Option 4: File GST DRC-01 Rule 88C Turnover Reconciliation with Bank MDR Deduction Schedule
-                  </strong>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
-                    Reconciles outward turnover difference between GSTR-1 vs GSTR-3B, proving difference is gateway fees and protecting input tax credit (ITC).
-                  </p>
+                {/* Auditor Sign-Off & DSC Authorization */}
+                <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                    Authorized Signatory &amp; Digital Signature Certificate (DSC)
+                  </label>
+                  <input
+                    type="text"
+                    value={caMembershipNo}
+                    readOnly={isDefended}
+                    onChange={(e) => setCaMembershipNo(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: isDefended ? '#475569' : '#0f172a',
+                      background: isDefended ? '#f1f5f9' : '#fff'
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Auditor Sign-Off & DSC Authorization */}
-              <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                  Authorized Signatory &amp; Digital Signature Certificate (DSC)
-                </label>
-                <input
-                  type="text"
-                  value={caMembershipNo}
-                  onChange={(e) => setCaMembershipNo(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}
-                />
+              {/* Terminal Footer */}
+              <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                {isDefended ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+                      setDisputeItem(null)
+                    }}
+                    className="d-btn d-btn-primary"
+                    style={{
+                      fontSize: '0.84rem',
+                      padding: '8px 22px',
+                      background: '#15803d',
+                      borderColor: '#15803d',
+                      color: '#ffffff',
+                      fontWeight: 700
+                    }}
+                  >
+                    ✓ Close Certified View
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+                        setDisputeItem(null)
+                      }}
+                      className="d-btn d-btn-ghost"
+                      style={{ fontSize: '0.84rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isExecutingDefense}
+                      onClick={handleConfirmDefense}
+                      className="d-btn d-btn-primary"
+                      style={{
+                        fontSize: '0.84rem',
+                        padding: '8px 22px',
+                        background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+                        borderColor: '#15803d',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 8px rgba(22,163,74,0.3)'
+                      }}
+                    >
+                      {isExecutingDefense ? 'Submitting to Portal...' : '🏛️ File Statutory Defense & Mitigate Exposure'}
+                    </button>
+                  </>
+                )}
               </div>
-            </div>
-
-            {/* Terminal Footer */}
-            <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setDisputeItem(null)}
-                className="d-btn d-btn-ghost"
-                style={{ fontSize: '0.84rem' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isExecutingDefense}
-                onClick={handleConfirmDefense}
-                className="d-btn d-btn-primary"
-                style={{
-                  fontSize: '0.84rem',
-                  padding: '8px 22px',
-                  background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
-                  borderColor: '#15803d',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 8px rgba(22,163,74,0.3)'
-                }}
-              >
-                {isExecutingDefense ? 'Submitting to Portal...' : '🏛️ File Statutory Defense & Mitigate Exposure'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
     </section>
   )

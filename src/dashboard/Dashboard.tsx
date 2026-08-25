@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from './TopNav'
 import Sidebar from './Sidebar'
 import MetricCards from './MetricCards'
@@ -11,6 +11,14 @@ export default function Dashboard() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { report, mlResult, lastRunAt } = useFinanceContext()
   const hasFinance = !!report
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
 
   return (
     <div className="dash-app">

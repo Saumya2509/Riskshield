@@ -1,24 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
 
+function loadSetting(key: string, fallback: string): string {
+  try { return localStorage.getItem(`rs_${key}`) ?? fallback } catch { return fallback }
+}
+
 export default function SettingsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Config states
-  const [fuzzyTol, setFuzzyTol] = useState('1.0')
-  const [dateWindow, setDateWindow] = useState('2')
-  const [partialMax, setPartialMax] = useState('20.0')
-  const [mlHighRisk, setMlHighRisk] = useState('45')
-  const [mlCritical, setMlCritical] = useState('70')
-  const [taxRate, setTaxRate] = useState('21')
-  const [whtRate, setWhtRate] = useState('15')
+  // Config states — load from localStorage with sensible defaults
+  const [fuzzyTol, setFuzzyTol] = useState(() => loadSetting('fuzzyTol', '1.0'))
+  const [dateWindow, setDateWindow] = useState(() => loadSetting('dateWindow', '2'))
+  const [partialMax, setPartialMax] = useState(() => loadSetting('partialMax', '20.0'))
+  const [mlHighRisk, setMlHighRisk] = useState(() => loadSetting('mlHighRisk', '45'))
+  const [mlCritical, setMlCritical] = useState(() => loadSetting('mlCritical', '70'))
+  const [taxRate, setTaxRate] = useState(() => loadSetting('taxRate', '25.17'))
+  const [whtRate, setWhtRate] = useState(() => loadSetting('whtRate', '15'))
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    try {
+      localStorage.setItem('rs_fuzzyTol', fuzzyTol)
+      localStorage.setItem('rs_dateWindow', dateWindow)
+      localStorage.setItem('rs_partialMax', partialMax)
+      localStorage.setItem('rs_mlHighRisk', mlHighRisk)
+      localStorage.setItem('rs_mlCritical', mlCritical)
+      localStorage.setItem('rs_taxRate', taxRate)
+      localStorage.setItem('rs_whtRate', whtRate)
+    } catch { /* localStorage unavailable */ }
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }

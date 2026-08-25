@@ -21,7 +21,7 @@ export default function TopNav({ onMenu }: TopNavProps) {
         </a>
         <label className="d-search">
           <span className="d-search-icon" aria-hidden="true">⌕</span>
-          <input type="search" placeholder="Search orders, customers, cases…" />
+          <input type="search" placeholder="Search batches, records, counterparties…" />
         </label>
         <div className="d-top-actions">
           {/* Hackathon Judge Pitch & Architecture Button */}

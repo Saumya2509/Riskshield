@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
@@ -9,14 +9,28 @@ import { buildForecast } from '../finance/cashForecast'
 import '../dashboard/dashboard.css'
 import '../finance/finance.css'
 
+function recentDate(daysAgo: number, time: string) {
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${time}`
+}
+
 const RECENT_AUDIT_LOGS = [
-  { id: 'RPT-2026-08-01', batch: 'Batch #1 (Enterprise)', date: '2026-08-23 18:15', records: 500, matchRate: '96.8%', cleared: '₹1,24,85,000', status: 'Certified', signedBy: 'Alex Morgan' },
-  { id: 'RPT-2026-08-02', batch: 'Batch #2 (Multi-Currency)', date: '2026-08-22 16:40', records: 500, matchRate: '94.2%', cleared: '₹98,21,000', status: 'Certified', signedBy: 'Elena Rostova' },
-  { id: 'RPT-2026-08-03', batch: 'Batch #3 (E-Commerce)', date: '2026-08-21 14:10', records: 500, matchRate: '97.4%', cleared: '₹1,52,03,000', status: 'Certified', signedBy: 'David Miller' },
+  { id: 'RPT-2026-08-01', batch: 'Batch #1 (Enterprise)', date: recentDate(1, '18:15'), records: 500, matchRate: '96.8%', cleared: '₹1,24,85,000', status: 'Certified', signedBy: 'Alex Morgan' },
+  { id: 'RPT-2026-08-02', batch: 'Batch #2 (Multi-Currency)', date: recentDate(2, '16:40'), records: 500, matchRate: '94.2%', cleared: '₹98,21,000', status: 'Certified', signedBy: 'Elena Rostova' },
+  { id: 'RPT-2026-08-03', batch: 'Batch #3 (E-Commerce)', date: recentDate(3, '14:10'), records: 500, matchRate: '97.4%', cleared: '₹1,52,03,000', status: 'Certified', signedBy: 'David Miller' },
 ]
 
 export default function ReportsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
   const ctx = useFinanceContext()
   const rawReport = ctx.report
 

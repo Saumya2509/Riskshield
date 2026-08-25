@@ -48,6 +48,14 @@ export default function AIAssistantPage() {
     }
   }, [])
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
+
   function toggleThought(msgId: string) {
     setCollapsedThoughts(prev => ({
       ...prev,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
@@ -61,6 +61,14 @@ export default function ExceptionsPage() {
   const [analystName, setAnalystName] = useState<string>('Sarah Chen (Lead Controller)')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
 
   const allExceptions: MatchResult[] = report ? report.exceptionList : []
   const resolvedMap = ctx.resolvedMap
@@ -126,6 +134,23 @@ export default function ExceptionsPage() {
 
     setIsSubmitting(false)
     setSolvingItem(null)
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+    setTimeout(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }, 50)
   }
 
   // Save changes and update Multi-Source Reconciliation
@@ -607,7 +632,7 @@ export default function ExceptionsPage() {
                             {isResolved ? (
                               <button
                                 type="button"
-                                onClick={() => handleOpenSolveModal(item)}
+                                onClick={(e) => { e.currentTarget.blur(); handleOpenSolveModal(item) }}
                                 style={{
                                   padding: '3px 8px',
                                   borderRadius: 6,
@@ -624,7 +649,7 @@ export default function ExceptionsPage() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => handleOpenSolveModal(item)}
+                                onClick={(e) => { e.currentTarget.blur(); handleOpenSolveModal(item) }}
                                 style={{
                                   padding: '5px 12px',
                                   borderRadius: 6,

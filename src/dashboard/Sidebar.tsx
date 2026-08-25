@@ -1,3 +1,5 @@
+import { useFinanceContext } from '../finance/FinanceContext'
+
 type SidebarProps = {
   open: boolean
   onClose: () => void
@@ -16,6 +18,11 @@ export const SIDEBAR_NAV = [
 ]
 
 export default function Sidebar({ open, onClose, activeId = 'dashboard' }: SidebarProps) {
+  const ctx = useFinanceContext()
+  const exceptionCount = ctx.report?.exceptionList?.length ?? 0
+  const resolvedCount = Object.keys(ctx.resolvedMap).length
+  const openExceptions = Math.max(0, exceptionCount - resolvedCount)
+
   return (
     <>
       {open && (
@@ -25,18 +32,53 @@ export default function Sidebar({ open, onClose, activeId = 'dashboard' }: Sideb
         <p className="d-side-label">Finance &amp; Risk</p>
 
         <nav aria-label="Main navigation">
-          {SIDEBAR_NAV.map(item => (
-            <a
-              key={item.id}
-              href={item.href}
-              className={item.id === activeId ? 'is-active' : ''}
-              onClick={onClose}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: '0.85rem' }}
-            >
-              <span style={{ fontSize: '1rem', width: 20, textAlign: 'center', opacity: 0.85 }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </a>
-          ))}
+          {SIDEBAR_NAV.map(item => {
+            const isActive = item.id === activeId
+            return (
+              <a
+                key={item.id}
+                href={item.href}
+                className={isActive ? 'is-active' : ''}
+                onClick={onClose}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  fontSize: '0.85rem',
+                  position: 'relative'
+                }}
+              >
+                <span style={{ fontSize: '1rem', width: 20, textAlign: 'center', opacity: 0.85 }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+
+                {item.id === 'exceptions' && ctx.report && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 750,
+                    padding: '1px 6px',
+                    borderRadius: 999,
+                    background: openExceptions > 0 ? '#ef4444' : '#10b981',
+                    color: '#ffffff',
+                    lineHeight: 1.3
+                  }}>
+                    {openExceptions > 0 ? openExceptions : '✓'}
+                  </span>
+                )}
+
+                {item.id === 'reconciliation' && ctx.report && (
+                  <span style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    boxShadow: '0 0 6px #10b981'
+                  }} />
+                )}
+              </a>
+            )
+          })}
         </nav>
 
         {/* Quick system status in sidebar footer */}

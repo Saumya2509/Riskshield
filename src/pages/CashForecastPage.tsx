@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import CashForecastChart from '../finance/CashForecastChart'
@@ -15,6 +15,14 @@ export default function CashForecastPage() {
   const forecast = report ? buildForecast(report) : null
 
   const [simDays, setSimDays] = useState(7)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const mainEl = document.querySelector('.d-main')
+    if (mainEl) mainEl.scrollTop = 0
+  }, [])
 
   return (
     <div className="dash-app fin-page">
@@ -49,6 +57,22 @@ export default function CashForecastPage() {
                     style={{ height: 32, padding: '0 12px', fontSize: '0.78rem' }}
                   >
                     7 Days
+                  </button>
+                  <button
+                    className={`d-btn ${simDays === 14 ? 'd-btn-primary' : 'd-btn-ghost'}`}
+                    onClick={() => setSimDays(14)}
+                    type="button"
+                    style={{ height: 32, padding: '0 12px', fontSize: '0.78rem' }}
+                  >
+                    14 Days
+                  </button>
+                  <button
+                    className={`d-btn ${simDays === 30 ? 'd-btn-primary' : 'd-btn-ghost'}`}
+                    onClick={() => setSimDays(30)}
+                    type="button"
+                    style={{ height: 32, padding: '0 12px', fontSize: '0.78rem' }}
+                  >
+                    30 Days
                   </button>
                 </div>
               </div>
