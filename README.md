@@ -155,11 +155,28 @@ RiskShield includes **5 pre-configured 500-record enterprise test datasets**:
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🐳 Option A: Run with Docker (Fastest · Zero Setup)
+No Node.js or dependencies required. Runs in a lightweight, production-grade Nginx container:
+
+```bash
+# Clone the repository
+git clone https://github.com/Saumya2509/Riskshield.git
+cd Riskshield/riskshield
+
+# Build and start container in 1 command
+docker compose up --build
+```
+> 🌐 RiskShield is immediately live at **`http://localhost:80`** (or `http://localhost:3000`).
+
+---
+
+### 💻 Option B: Run with Node.js / Vite
+
+#### Prerequisites
 - [Node.js](https://nodejs.org/) (v18 or higher)
 - [npm](https://www.npmjs.com/) (v9 or higher)
 
-### 1. Clone the Repository
+#### 1. Clone the Repository
 ```bash
 git clone https://github.com/Saumya2509/Riskshield.git
 cd Riskshield/riskshield
