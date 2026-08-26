@@ -61,8 +61,8 @@ export default function TransactionTable() {
           <table className="d-table">
             <thead>
               <tr>
-                <th>Invoice ID</th>
-                <th>Bank Source</th>
+                <th>Record ID</th>
+                <th>Feed Source</th>
                 <th>Customer/Vendor</th>
                 <th style={{ textAlign: 'right' }}>Invoice Amount</th>
                 <th style={{ textAlign: 'right' }}>Bank Amount</th>
@@ -78,6 +78,15 @@ export default function TransactionTable() {
               {financeRows.map((row) => {
                 const rStyle = reconBadgeStyle(row.status)
                 const isActioned = actionedIds.has(row.record.id)
+
+                // 3-Way reconciliation amounts
+                const invoiceAmount = row.record.source === 'INVOICE'
+                  ? row.record.amount
+                  : row.status === 'Exact'
+                  ? row.record.amount
+                  : row.status === 'Fuzzy' || row.status === 'Partial'
+                  ? (row.matchedLedger?.amount ?? row.record.amount)
+                  : null
 
                 const bankAmount = row.record.source === 'BANK'
                   ? row.record.amount
@@ -100,10 +109,10 @@ export default function TransactionTable() {
                     style={{ opacity: isActioned ? 0.6 : 1, cursor: 'pointer' }}
                     title="Click to view 3-way Record Details"
                   >
-                    {/* 1. Invoice ID */}
+                    {/* 1. Record ID */}
                     <td className="mono">
                       <span
-                        style={{ color: '#2563eb', fontWeight: 700 }}
+                        style={{ color: '#2563eb', fontWeight: 750 }}
                       >
                         {row.record.id}
                       </span>
@@ -123,11 +132,11 @@ export default function TransactionTable() {
                       )}
                     </td>
 
-                    {/* 2. Bank Source */}
+                    {/* 2. Feed Source */}
                     <td>
                       <span style={{
-                        display: 'inline-block', padding: '1px 7px', borderRadius: 6,
-                        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em',
+                        display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                        fontSize: '0.68rem', fontWeight: 750, letterSpacing: '0.04em',
                         background: row.record.source === 'BANK' ? '#dbeafe' : row.record.source === 'LEDGER' ? '#dcfce7' : '#fef3c7',
                         color: row.record.source === 'BANK' ? '#1e40af' : row.record.source === 'LEDGER' ? '#166534' : '#92400e',
                       }}>
@@ -136,14 +145,15 @@ export default function TransactionTable() {
                     </td>
 
                     {/* 3. Customer/Vendor */}
-                    <td style={{ fontWeight: 600, color: '#1e293b', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.record.counterparty}>
+                    <td style={{ fontWeight: 600, color: '#1e293b', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.record.counterparty}>
                       {row.record.counterparty}
                     </td>
 
                     {/* 4. Invoice Amount */}
-                    <td className="mono" style={{ textAlign: 'right' }}>
-                      {row.record.currency !== 'INR' ? row.record.currency + ' ' : '₹'}
-                      {row.record.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <td className="mono" style={{ textAlign: 'right', color: invoiceAmount !== null ? '#0f172a' : '#94a3b8' }}>
+                      {invoiceAmount !== null
+                        ? `₹${invoiceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : '—'}
                     </td>
 
                     {/* 5. Bank Amount */}
@@ -169,7 +179,7 @@ export default function TransactionTable() {
                     <td style={{ textAlign: 'right' }}>
                       {row.delta > 0.01 ? (
                         <span style={{ background: '#fef2f2', color: '#b91c1c', padding: '2px 7px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700 }}>
-                          −₹{row.delta.toFixed(2)}
+                          −₹{row.delta.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       ) : (
                         <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.74rem' }}>
@@ -198,34 +208,55 @@ export default function TransactionTable() {
 
                     {/* 11. Action */}
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRowAction(row.record.id)
-                        }}
-                        style={{
-                          padding: '3px 9px',
-                          borderRadius: 6,
-                          fontSize: '0.72rem',
-                          fontWeight: 650,
-                          cursor: 'pointer',
-                          border: '1px solid #cbd5e1',
-                          background: isActioned ? '#dcfce7' : row.status === 'Exact' ? '#f8fafc' : '#eff6ff',
-                          color: isActioned ? '#15803d' : row.status === 'Exact' ? '#64748b' : '#1d4ed8',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {isActioned
-                          ? '✓ Done'
-                          : row.status === 'Exact'
-                          ? 'Auto-Cleared'
-                          : row.status === 'Fuzzy'
-                          ? 'Review Fee'
-                          : row.status === 'Partial'
-                          ? 'Debit Memo'
-                          : 'Investigate'}
-                      </button>
+                      {row.status === 'Exception' ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            window.location.hash = `#/exceptions`
+                          }}
+                          style={{
+                            padding: '3px 9px',
+                            borderRadius: 6,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: '1px solid #fecaca',
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          Investigate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRowAction(row.record.id)
+                          }}
+                          style={{
+                            padding: '3px 9px',
+                            borderRadius: 6,
+                            fontSize: '0.72rem',
+                            fontWeight: 650,
+                            cursor: 'pointer',
+                            border: '1px solid #cbd5e1',
+                            background: isActioned ? '#dcfce7' : row.status === 'Exact' ? '#f8fafc' : '#eff6ff',
+                            color: isActioned ? '#15803d' : row.status === 'Exact' ? '#64748b' : '#1d4ed8',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {isActioned
+                            ? '✓ Done'
+                            : row.status === 'Exact'
+                            ? 'Auto-Cleared'
+                            : row.status === 'Fuzzy'
+                            ? 'Review Fee'
+                            : 'Debit Memo'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -237,8 +268,8 @@ export default function TransactionTable() {
           <table className="d-table">
             <thead>
               <tr>
-                <th>Invoice ID</th>
-                <th>Bank Source</th>
+                <th>Record ID</th>
+                <th>Feed Source</th>
                 <th>Customer/Vendor</th>
                 <th style={{ textAlign: 'right' }}>Invoice Amount</th>
                 <th style={{ textAlign: 'right' }}>Bank Amount</th>
