@@ -89,9 +89,12 @@ export default function InteractiveTerminal() {
               </div>
             )}
           </div>
-
           <div className="lp-terminal-footer">
-            <button onClick={runSim} disabled={isRunning} className="lp-btn lp-btn-outline-light" style={{ fontSize: '0.84rem', padding: '9px 18px' }}>
+            <button
+              onClick={runSim}
+              disabled={isRunning}
+              className="lp-terminal-btn-rerun"
+            >
               {isRunning ? '⚡ Running…' : '▶ Re-Run Simulation'}
             </button>
             <a href="#/reconciliation" className="lp-btn lp-btn-primary" style={{ fontSize: '0.84rem', padding: '9px 20px' }}>

@@ -165,12 +165,14 @@
 }
 
 .lp-btn-outline-light {
-  border-color: rgba(255,255,255,0.2);
-  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f1f5f9;
 }
 .lp-btn-outline-light:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.35);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
   transform: translateY(-2px);
 }
 
@@ -320,6 +322,7 @@
 .lp-nav-cta-ghost {
   color: rgba(255,255,255,0.85);
   border-color: rgba(255,255,255,0.2);
+  background: transparent;
 }
 .lp-nav-cta-ghost:hover {
   background: rgba(255,255,255,0.1);
@@ -328,6 +331,7 @@
 .lp-nav--scrolled .lp-nav-cta-ghost {
   color: var(--text);
   border-color: var(--border);
+  background: transparent;
 }
 .lp-nav--scrolled .lp-nav-cta-ghost:hover {
   background: #f1f5f9;
@@ -783,19 +787,19 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 .lp-terminal-wrap {
   background: var(--navy);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
 }
 
 .lp-terminal-header {
-  background: rgba(11, 15, 25, 0.9);
+  background: rgba(11, 15, 25, 0.95);
   padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .lp-terminal-dots {
@@ -842,17 +846,46 @@
   line-height: 1.8;
   min-height: 260px;
   color: #cbd5e1;
+  background: #091222;
 }
 
 .lp-terminal-footer {
   padding: 14px 22px;
-  background: rgba(11, 15, 25, 0.9);
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(11, 15, 25, 0.95);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.lp-terminal-btn-rerun {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f1f5f9;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.lp-terminal-btn-rerun:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.lp-terminal-btn-rerun:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
