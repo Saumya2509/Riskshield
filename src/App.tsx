@@ -37,8 +37,23 @@ function currentView(): View {
   return 'landing'
 }
 
+import CommandPalette from './components/CommandPalette'
+
 export default function App() {
   const [view, setView] = useState<View>(currentView)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  // Global Ctrl+K / Cmd+K key listener
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
 
   useEffect(() => {
     const onHash = () => {
@@ -61,6 +76,7 @@ export default function App() {
 
   return (
     <FinanceContextProvider>
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {view === 'dashboard'      && <Dashboard />}
       {view === 'reconciliation' && <ReconciliationPage />}
       {view === 'exceptions'     && <ExceptionsPage />}

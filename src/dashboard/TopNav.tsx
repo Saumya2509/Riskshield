@@ -2,33 +2,16 @@ import { useState } from 'react'
 import Logo from '../components/Logo'
 import HackathonPitchModal from '../components/HackathonPitchModal'
 
+import CommandPalette from '../components/CommandPalette'
+
 type TopNavProps = {
   onMenu: () => void
 }
 
 export default function TopNav({ onMenu }: TopNavProps) {
   const [pitchOpen, setPitchOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!searchTerm.trim()) return
-    const term = searchTerm.toLowerCase().trim()
-    if (term.includes('tax') || term.includes('notice') || term.includes('148') || term.includes('gst')) {
-      window.location.hash = '#/tax-matcher'
-    } else if (term.includes('cash') || term.includes('forecast') || term.includes('liquidity')) {
-      window.location.hash = '#/cash-forecast'
-    } else if (term.includes('exception') || term.includes('error') || term.includes('mismatch')) {
-      window.location.hash = '#/exceptions'
-    } else if (term.includes('report') || term.includes('pdf') || term.includes('audit')) {
-      window.location.hash = '#/reports'
-    } else if (term.includes('ai') || term.includes('copilot') || term.includes('agent') || term.includes('chat')) {
-      window.location.hash = '#/ai-assistant'
-    } else {
-      window.location.hash = '#/reconciliation'
-    }
-  }
 
   return (
     <>
@@ -40,15 +23,34 @@ export default function TopNav({ onMenu }: TopNavProps) {
           <Logo variant="dash" size={30} />
           <span>RiskShield</span>
         </a>
-        <form className="d-search" onSubmit={handleSearchSubmit}>
+        <div
+          className="d-search"
+          onClick={() => setPaletteOpen(true)}
+          style={{ cursor: 'pointer', position: 'relative' }}
+        >
           <span className="d-search-icon" aria-hidden="true">⌕</span>
           <input
             type="search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search batches, records, counterparties, tax notices… (Press Enter)"
+            readOnly
+            placeholder="Quick Jump / Search records, batches, tax notices… (Press ⌘K or Ctrl+K)"
+            style={{ cursor: 'pointer' }}
           />
-        </form>
+          <kbd style={{
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            padding: '2px 6px',
+            color: '#64748b'
+          }}>
+            ⌘K
+          </kbd>
+        </div>
         <div className="d-top-actions" style={{ position: 'relative' }}>
           {/* Hackathon Judge Pitch & Architecture Button */}
           <button
@@ -141,6 +143,9 @@ export default function TopNav({ onMenu }: TopNavProps) {
           </div>
         </div>
       </header>
+
+      {/* Command Palette Modal */}
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* Pitch Deck Modal */}
       <HackathonPitchModal isOpen={pitchOpen} onClose={() => setPitchOpen(false)} />

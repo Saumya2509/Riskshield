@@ -6,6 +6,7 @@ import { useFinanceContext } from './FinanceContext'
 import { parseCSV, generateBatchSet, BATCH_INFO } from './csvService'
 import { syncReportToSupabase } from './supabaseClient'
 import type { FinanceRecord } from './financeData'
+import MultiSourceDropZone from './MultiSourceDropZone'
 
 interface Props {
   onComplete: (report: ReconciliationReport) => void
@@ -279,31 +280,13 @@ export default function ReconciliationRun({ onComplete }: Props) {
 
       {/* Results table / Idle Upload State */}
       {phase === 'idle' ? (
-        <div style={{ padding: '36px 24px', color: '#64748b' }}>
-          <div style={{
-            maxWidth: 620,
-            margin: '0 auto 28px',
-            padding: '28px 24px',
-            border: '2px dashed #cbd5e1',
-            borderRadius: '12px',
-            background: '#fafbfc',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '2.4rem', marginBottom: 12 }}>📁</div>
-            <h3 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700 }}>
-              Upload Financial Reconciliation CSV
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px', lineHeight: 1.5 }}>
-              Upload your financial transaction dataset containing BANK statements, LEDGER entries, and INVOICES for automated 3-way reconciliation.
-            </p>
-            <button
-              className="fin-run-btn"
-              onClick={() => fileInputRef.current?.click()}
-              type="button"
-              style={{ fontSize: '0.95rem', padding: '0 28px', height: '42px' }}
-            >
-              📁 Choose CSV File to Reconcile
-            </button>
+        <div style={{ padding: '24px 20px', color: '#64748b' }}>
+          {/* Multi-Source 3-Feed Visual Drop Zone */}
+          <div style={{ maxWidth: 840, margin: '0 auto 24px' }}>
+            <MultiSourceDropZone
+              disabled={running}
+              onReconcile={(b, l, inv, all, name) => executeReconciliation(b, l, inv, all, name)}
+            />
           </div>
 
           {/* Pre-Generated 500-record Enterprise Datasets */}
