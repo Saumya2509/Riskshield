@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopNav from '../dashboard/TopNav'
 import Sidebar from '../dashboard/Sidebar'
 import { useFinanceContext } from '../finance/FinanceContext'
@@ -34,6 +34,21 @@ export default function RecordDetailsPage() {
       ? paramId
       : report.results[0]?.record.id || 'B1-BNK-001'
   )
+
+  // Sync selected ID when hash changes while on the page
+  useEffect(() => {
+    const onHashSync = () => {
+      const currentHash = window.location.hash
+      if (currentHash.includes('id=')) {
+        const newId = decodeURIComponent(currentHash.split('id=')[1].split('&')[0])
+        if (newId && report.results.some(r => r.record.id === newId)) {
+          setSelectedRecordId(newId)
+        }
+      }
+    }
+    window.addEventListener('hashchange', onHashSync)
+    return () => window.removeEventListener('hashchange', onHashSync)
+  }, [report.results])
 
   // Local state for actions
   const [assignedAnalyst, setAssignedAnalyst] = useState<Record<string, string>>({})
