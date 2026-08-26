@@ -97,46 +97,6 @@ An intelligent natural language assistant for CFOs, controllers, and auditors:
 
 ---
 
-## 🗄️ Database Architecture (Supabase PostgreSQL)
-
-RiskShield persists every reconciliation run and match result to a production PostgreSQL database:
-
-```sql
--- Batch Reconciliation Runs
-CREATE TABLE public.reconciliation_runs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  batch_id VARCHAR(64) NOT NULL,
-  total_records INTEGER NOT NULL,
-  cleared_amount NUMERIC(15, 2) NOT NULL,
-  open_amount NUMERIC(15, 2) NOT NULL,
-  match_rate NUMERIC(5, 2) NOT NULL,
-  accuracy NUMERIC(5, 2) NOT NULL,
-  run_time_ms INTEGER NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Individual 3-Way Match Records
-CREATE TABLE public.reconciliation_matches (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  run_id UUID REFERENCES public.reconciliation_runs(id) ON DELETE CASCADE,
-  record_id VARCHAR(64) NOT NULL,
-  source VARCHAR(16) NOT NULL,
-  counterparty VARCHAR(255) NOT NULL,
-  amount NUMERIC(15, 2) NOT NULL,
-  currency VARCHAR(8) NOT NULL DEFAULT 'INR',
-  status VARCHAR(16) NOT NULL,
-  delta NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-  confidence INTEGER NOT NULL DEFAULT 100,
-  exception_code VARCHAR(32),
-  is_resolved BOOLEAN NOT NULL DEFAULT false,
-  assigned_analyst VARCHAR(255),
-  resolution_notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
----
-
 ## 📦 Ingestion Batches Available
 
 RiskShield includes **5 pre-configured 500-record enterprise test datasets**:
@@ -233,9 +193,6 @@ npm run build
 
 ---
 
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
