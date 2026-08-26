@@ -9,6 +9,8 @@ interface CommandPaletteProps {
   onClose: () => void
 }
 
+type CategoryType = 'All' | 'Pages' | 'Batches' | 'Live Records' | 'Exceptions' | 'Quick Actions'
+
 interface PaletteItem {
   id: string
   title: string
@@ -19,31 +21,34 @@ interface PaletteItem {
   badgeColor?: string
   icon: string
   amount?: string
+  isException?: boolean
   action: () => void
 }
 
 export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [search, setSearch] = useState('')
+  const [activeCategory, setActiveCategory] = useState<CategoryType>('All')
   const [selectedIdx, setSelectedIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const ctx = useFinanceContext()
 
-  // Get active report or fallback to default reconciliation batch
+  // Active report
   const activeReport = useMemo(() => {
     return ctx.report || runReconciliation()
   }, [ctx.report])
 
-  // Reset search and focus input when opened
+  // Reset state when opened
   useEffect(() => {
     if (isOpen) {
       setSearch('')
+      setActiveCategory('All')
       setSelectedIdx(0)
       setTimeout(() => inputRef.current?.focus(), 40)
     }
   }, [isOpen])
 
-  // Helper to load a batch
+  // Batch loader
   const loadBatch = (batchId: number) => {
     const data = generateBatchSet(batchId)
     const report = runReconciliation({
@@ -60,7 +65,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     onClose()
   }
 
-  // Base list of navigation, batches and quick actions
+  // Base navigation and action items
   const baseItems: PaletteItem[] = useMemo(() => {
     return [
       // Navigation Pages
@@ -79,19 +84,20 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Pages',
         icon: '⚡',
         badge: `${activeReport.matchRate.toFixed(0)}% Matched`,
-        badgeBg: 'rgba(16, 185, 129, 0.15)',
+        badgeBg: 'rgba(16, 185, 129, 0.16)',
         badgeColor: '#34d399',
         action: () => { window.location.hash = '#/reconciliation'; onClose(); }
       },
       {
         id: 'nav-exc',
         title: '1-Click Exceptions Workbench',
-        subtitle: `${activeReport.exceptions} discrepancies requiring GAAP settlement, debit memos, or suspense clearing`,
+        subtitle: `${activeReport.exceptions} discrepancies requiring GAAP settlement or debit memos`,
         category: 'Pages',
         icon: '🛡️',
-        badge: `${activeReport.exceptions} Exceptions`,
-        badgeBg: 'rgba(239, 68, 68, 0.15)',
+        badge: `${activeReport.exceptions} Open`,
+        badgeBg: 'rgba(239, 68, 68, 0.16)',
         badgeColor: '#f87171',
+        isException: true,
         action: () => { window.location.hash = '#/exceptions'; onClose(); }
       },
       {
@@ -109,7 +115,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Pages',
         icon: '🏛️',
         badge: 'CBDT DIN',
-        badgeBg: 'rgba(168, 85, 247, 0.15)',
+        badgeBg: 'rgba(168, 85, 247, 0.16)',
         badgeColor: '#c084fc',
         action: () => { window.location.hash = '#/tax-matcher'; onClose(); }
       },
@@ -138,15 +144,15 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         action: () => { window.location.hash = '#/settings'; onClose(); }
       },
 
-      // Batches
+      // Ingestion Batches
       {
         id: 'act-b1',
         title: 'Load Batch #1 · Enterprise Multi-Entity (₹1.42 Cr)',
-        subtitle: '500 records · 3-way reconciliation, timing delays, minor fee variance',
+        subtitle: '500 records · Standard 3-way reconciliation, timing delays, minor fee variance',
         category: 'Batches',
         icon: '📁',
         badge: 'Batch #1',
-        badgeBg: 'rgba(59, 130, 246, 0.15)',
+        badgeBg: 'rgba(59, 130, 246, 0.16)',
         badgeColor: '#60a5fa',
         action: () => loadBatch(1)
       },
@@ -157,7 +163,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Batches',
         icon: '🌐',
         badge: 'Batch #2',
-        badgeBg: 'rgba(99, 102, 241, 0.15)',
+        badgeBg: 'rgba(99, 102, 241, 0.16)',
         badgeColor: '#818cf8',
         action: () => loadBatch(2)
       },
@@ -168,7 +174,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Batches',
         icon: '🛍️',
         badge: 'Batch #3',
-        badgeBg: 'rgba(245, 158, 11, 0.15)',
+        badgeBg: 'rgba(245, 158, 11, 0.16)',
         badgeColor: '#fbbf24',
         action: () => loadBatch(3)
       },
@@ -179,7 +185,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Batches',
         icon: '🔄',
         badge: 'Batch #4',
-        badgeBg: 'rgba(6, 182, 212, 0.15)',
+        badgeBg: 'rgba(6, 182, 212, 0.16)',
         badgeColor: '#22d3ee',
         action: () => loadBatch(4)
       },
@@ -190,7 +196,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Batches',
         icon: '🏛️',
         badge: 'Batch #5',
-        badgeBg: 'rgba(16, 185, 129, 0.15)',
+        badgeBg: 'rgba(16, 185, 129, 0.16)',
         badgeColor: '#34d399',
         action: () => loadBatch(5)
       },
@@ -203,7 +209,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         category: 'Quick Actions',
         icon: '⚡',
         badge: '1-Click Solve',
-        badgeBg: 'rgba(16, 185, 129, 0.2)',
+        badgeBg: 'rgba(16, 185, 129, 0.22)',
         badgeColor: '#4ade80',
         action: () => { window.location.hash = '#/exceptions'; onClose(); }
       },
@@ -213,30 +219,32 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         subtitle: 'Calculate 25.17% corporate tax savings vs 34.94% Old Regime with verified DIN',
         category: 'Quick Actions',
         icon: '💰',
-        badge: 'Tax Shield',
-        badgeBg: 'rgba(56, 189, 248, 0.2)',
+        badge: '25.17% Tax',
+        badgeBg: 'rgba(56, 189, 248, 0.22)',
         badgeColor: '#38bdf8',
         action: () => { window.location.hash = '#/tax-matcher'; onClose(); }
       }
     ]
   }, [activeReport, ctx.activeFileName])
 
-  // Live real records from the active batch (indexed with exact accuracy)
+  // Real 500-record items
   const recordItems: PaletteItem[] = useMemo(() => {
     if (!activeReport || !activeReport.results) return []
 
     return activeReport.results.map((r) => {
       const isFixed = !!ctx.resolvedMap[r.record.id]
       const statusLabel = isFixed ? 'Exact (Fixed)' : r.status
+      const isExc = r.status === 'Exception' && !isFixed
+
       const badgeBg = isFixed
-        ? 'rgba(16, 185, 129, 0.2)'
+        ? 'rgba(16, 185, 129, 0.22)'
         : r.status === 'Exact'
         ? 'rgba(16, 185, 129, 0.18)'
         : r.status === 'Fuzzy'
         ? 'rgba(56, 189, 248, 0.18)'
         : r.status === 'Partial'
         ? 'rgba(245, 158, 11, 0.18)'
-        : 'rgba(239, 68, 68, 0.2)'
+        : 'rgba(239, 68, 68, 0.22)'
 
       const badgeColor = isFixed
         ? '#4ade80'
@@ -255,11 +263,12 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       return {
         id: `rec-${r.record.id}`,
         title: `${r.record.id} · ${r.record.counterparty}`,
-        subtitle: `${r.record.source} · ${passText} · ${exceptionInfo}${r.confidence}% confidence${deltaText} · Date: ${r.record.date}`,
+        subtitle: `${r.record.source} · ${passText} · ${exceptionInfo}${r.confidence}% confidence${deltaText}`,
         category: 'Live Records',
         badge: statusLabel,
         badgeBg,
         badgeColor,
+        isException: isExc,
         amount: `₹${r.record.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         icon: r.record.source === 'BANK' ? '🏦' : r.record.source === 'LEDGER' ? '📑' : '🧾',
         action: () => {
@@ -270,31 +279,50 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     })
   }, [activeReport, ctx.resolvedMap])
 
-  // Combine base and records
-  const allItems = useMemo(() => {
-    return [...baseItems, ...recordItems]
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    return {
+      All: baseItems.length + recordItems.length,
+      Pages: baseItems.filter(i => i.category === 'Pages').length,
+      Batches: baseItems.filter(i => i.category === 'Batches').length,
+      'Live Records': recordItems.length,
+      Exceptions: recordItems.filter(i => i.isException).length,
+      'Quick Actions': baseItems.filter(i => i.category === 'Quick Actions').length
+    }
   }, [baseItems, recordItems])
 
-  // Precision multi-token search filter
+  // Filtered items
   const filtered = useMemo(() => {
+    let list: PaletteItem[] = []
+
+    if (activeCategory === 'All') {
+      list = [...baseItems, ...recordItems]
+    } else if (activeCategory === 'Exceptions') {
+      list = recordItems.filter(i => i.isException)
+    } else if (activeCategory === 'Live Records') {
+      list = recordItems
+    } else {
+      list = baseItems.filter(i => i.category === activeCategory)
+    }
+
     if (!search.trim()) {
-      return [
-        ...baseItems.slice(0, 8),
-        ...recordItems.slice(0, 12)
-      ]
+      if (activeCategory === 'All') {
+        return [
+          ...baseItems.slice(0, 8),
+          ...recordItems.slice(0, 14)
+        ]
+      }
+      return list.slice(0, 30)
     }
 
     const tokens = search.toLowerCase().trim().split(/\s+/).filter(Boolean)
+    return list.filter((item) => {
+      const searchable = `${item.id} ${item.title} ${item.subtitle} ${item.category} ${item.amount || ''} ${item.badge || ''}`.toLowerCase()
+      return tokens.every(token => searchable.includes(token))
+    }).slice(0, 30)
+  }, [search, activeCategory, baseItems, recordItems])
 
-    return allItems
-      .filter((item) => {
-        const searchable = `${item.id} ${item.title} ${item.subtitle} ${item.category} ${item.amount || ''} ${item.badge || ''}`.toLowerCase()
-        return tokens.every(token => searchable.includes(token))
-      })
-      .slice(0, 30)
-  }, [search, baseItems, recordItems, allItems])
-
-  // Auto scroll to active item in view
+  // Auto-scroll active item into view
   useEffect(() => {
     if (!listRef.current) return
     const activeEl = listRef.current.querySelector<HTMLElement>(`[data-palette-idx="${selectedIdx}"]`)
@@ -303,7 +331,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     }
   }, [selectedIdx])
 
-  // Keyboard navigation inside palette
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return
@@ -322,12 +350,18 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         if (filtered[selectedIdx]) {
           filtered[selectedIdx].action()
         }
+      } else if (e.key === 'Tab') {
+        e.preventDefault()
+        const categories: CategoryType[] = ['All', 'Pages', 'Batches', 'Exceptions', 'Live Records', 'Quick Actions']
+        const nextIdx = (categories.indexOf(activeCategory) + (e.shiftKey ? -1 : 1) + categories.length) % categories.length
+        setActiveCategory(categories[nextIdx])
+        setSelectedIdx(0)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, filtered, selectedIdx, onClose])
+  }, [isOpen, filtered, selectedIdx, activeCategory, onClose])
 
   if (!isOpen) return null
 
@@ -337,14 +371,14 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(4, 8, 18, 0.82)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: 'rgba(2, 6, 15, 0.82)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         zIndex: 99999,
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: '9vh',
+        paddingTop: '8vh',
         animation: 'fadeIn 0.15s ease-out'
       }}
     >
@@ -352,32 +386,45 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '720px',
-          background: 'linear-gradient(180deg, #0d1527 0%, #090e1a 100%)',
+          maxWidth: '740px',
+          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(9, 14, 26, 0.98) 100%)',
           border: '1px solid rgba(56, 189, 248, 0.35)',
-          borderRadius: '18px',
-          boxShadow: '0 25px 70px rgba(0, 0, 0, 0.8), 0 0 45px rgba(37, 99, 235, 0.3)',
+          borderRadius: '20px',
+          boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px -15px rgba(0, 0, 0, 0.9), 0 0 50px -10px rgba(37, 99, 235, 0.35)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column'
         }}
       >
-        {/* Top Search Input Bar */}
+        {/* Top Search Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: 14,
-          padding: '18px 22px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(15, 23, 42, 0.95)'
+          padding: '18px 24px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'rgba(15, 23, 42, 0.8)'
         }}>
-          <span style={{ fontSize: '1.25rem', color: '#38bdf8', filter: 'drop-shadow(0 0 6px #38bdf8)' }}>⌕</span>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: 'rgba(37, 99, 235, 0.18)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            display: 'grid',
+            placeItems: 'center',
+            color: '#38bdf8',
+            fontSize: '1.1rem'
+          }}>
+            ⌕
+          </div>
+
           <input
             ref={inputRef}
             type="text"
             value={search}
             onChange={e => { setSearch(e.target.value); setSelectedIdx(0); }}
-            placeholder="Search all 500 records (e.g. B1-BNK-001, Razorpay, 45000), pages, batches, or tax..."
+            placeholder="Search commands, pages, or 500 live records (e.g. B1-BNK-001, Razorpay, 45000)..."
             style={{
               flex: 1,
               background: 'transparent',
@@ -390,14 +437,15 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               letterSpacing: '-0.01em'
             }}
           />
+
           {search && (
             <button
               type="button"
               onClick={() => { setSearch(''); setSelectedIdx(0); inputRef.current?.focus(); }}
               style={{
-                background: 'rgba(255, 255, 255, 0.1)',
+                background: 'rgba(255, 255, 255, 0.08)',
                 border: 'none',
-                color: '#cbd5e1',
+                color: '#94a3b8',
                 borderRadius: '50%',
                 width: 22,
                 height: 22,
@@ -410,56 +458,85 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               ✕
             </button>
           )}
+
           <kbd style={{
             fontSize: '0.72rem',
-            fontWeight: 700,
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: 6,
-            padding: '3px 8px',
+            fontWeight: 750,
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            borderRadius: 7,
+            padding: '4px 8px',
             color: '#cbd5e1'
           }}>
             ESC
           </kbd>
         </div>
 
-        {/* Active Batch & Accuracy Meta Bar */}
+        {/* Category Filter Chips Bar */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '9px 22px',
-          background: 'rgba(6, 11, 22, 0.75)',
+          gap: 8,
+          padding: '10px 22px',
+          background: 'rgba(8, 13, 24, 0.65)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          fontSize: '0.76rem',
-          color: '#94a3b8'
+          overflowX: 'auto',
+          scrollbarWidth: 'none'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
-            <span>Dataset: <strong style={{ color: '#ffffff' }}>{ctx.activeFileName || 'Batch #1 (Enterprise Multi-Entity)'}</strong> ({activeReport.totalRecords} records)</span>
-          </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <span>Match Rate: <strong style={{ color: '#34d399' }}>{activeReport.matchRate.toFixed(1)}%</strong></span>
-            <span>·</span>
-            <span>Exceptions: <strong style={{ color: activeReport.exceptions > 0 ? '#f87171' : '#34d399' }}>{activeReport.exceptions}</strong></span>
-          </div>
+          {(['All', 'Pages', 'Batches', 'Exceptions', 'Live Records', 'Quick Actions'] as CategoryType[]).map(cat => {
+            const isActive = activeCategory === cat
+            const count = categoryCounts[cat]
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => { setActiveCategory(cat); setSelectedIdx(0); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  borderRadius: 999,
+                  border: `1px solid ${isActive ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.08)'}`,
+                  background: isActive ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'rgba(255, 255, 255, 0.03)',
+                  color: isActive ? '#ffffff' : '#94a3b8',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span>{cat}</span>
+                <span style={{
+                  fontSize: '0.66rem',
+                  padding: '1px 5px',
+                  borderRadius: 999,
+                  background: isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                  color: isActive ? '#ffffff' : '#64748b'
+                }}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Results List */}
         <div
           ref={listRef}
           style={{
-            maxHeight: '440px',
+            maxHeight: '420px',
             overflowY: 'auto',
-            padding: '10px 12px'
+            padding: '10px 14px'
           }}
         >
           {filtered.length === 0 ? (
             <div style={{ padding: '48px 20px', textAlign: 'center', color: '#64748b' }}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔍</div>
-              <div style={{ fontSize: '0.95rem', color: '#f1f5f9', fontWeight: 700 }}>No matching records or commands</div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 4 }}>
-                No results found for &ldquo;<span style={{ color: '#38bdf8' }}>{search}</span>&rdquo; in the active dataset.
+              <div style={{ fontSize: '2.2rem', marginBottom: 10 }}>🔍</div>
+              <div style={{ fontSize: '1rem', color: '#f1f5f9', fontWeight: 750 }}>No matching items found</div>
+              <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: 4 }}>
+                No records or actions match &ldquo;<span style={{ color: '#38bdf8' }}>{search}</span>&rdquo; in the <strong style={{ color: '#ffffff' }}>{activeCategory}</strong> category.
               </div>
             </div>
           ) : (
@@ -480,22 +557,23 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                     borderRadius: '12px',
                     cursor: 'pointer',
                     background: isSelected
-                      ? 'linear-gradient(90deg, rgba(37, 99, 235, 0.3) 0%, rgba(30, 58, 138, 0.2) 100%)'
+                      ? 'linear-gradient(90deg, rgba(37, 99, 235, 0.28) 0%, rgba(99, 102, 241, 0.16) 100%)'
                       : 'transparent',
                     border: `1px solid ${isSelected ? 'rgba(56, 189, 248, 0.45)' : 'transparent'}`,
-                    boxShadow: isSelected ? '0 0 20px rgba(37, 99, 235, 0.2)' : 'none',
-                    transition: 'all 0.12s ease',
-                    marginBottom: 4
+                    borderLeft: isSelected ? '3px solid #38bdf8' : '3px solid transparent',
+                    boxShadow: isSelected ? '0 4px 20px rgba(37, 99, 235, 0.25)' : 'none',
+                    transition: 'all 0.1s ease',
+                    marginBottom: 3
                   }}
                 >
-                  {/* Left: Icon & Title/Subtitle */}
+                  {/* Left: Icon & Titles */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
                     <span style={{
                       fontSize: '1.25rem',
-                      width: 32,
-                      height: 32,
-                      borderRadius: 8,
-                      background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
                       border: `1px solid ${isSelected ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
                       display: 'grid',
                       placeItems: 'center',
@@ -503,23 +581,21 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                     }}>
                       {item.icon}
                     </span>
+
                     <div style={{ minWidth: 0 }}>
                       <div style={{
                         fontSize: '0.92rem',
                         fontWeight: 750,
-                        color: isSelected ? '#ffffff' : '#f1f5f9',
+                        color: isSelected ? '#ffffff' : '#f8fafc',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8
+                        textOverflow: 'ellipsis'
                       }}>
-                        <span>{item.title}</span>
+                        {item.title}
                       </div>
                       <div style={{
                         fontSize: '0.76rem',
-                        color: isSelected ? '#93c5fd' : '#94a3b8',
+                        color: isSelected ? '#bae6fd' : '#94a3b8',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -530,8 +606,8 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                     </div>
                   </div>
 
-                  {/* Right: Amount & Badges */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  {/* Right: Amount & Status Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     {item.amount && (
                       <span style={{
                         fontSize: '0.9rem',
@@ -545,27 +621,44 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
                     {item.badge && (
                       <span style={{
-                        fontSize: '0.7rem',
+                        fontSize: '0.72rem',
                         fontWeight: 800,
-                        padding: '3px 9px',
-                        borderRadius: 6,
+                        padding: '3px 10px',
+                        borderRadius: 8,
                         background: item.badgeBg || 'rgba(56, 189, 248, 0.18)',
                         color: item.badgeColor || '#38bdf8',
-                        border: `1px solid ${item.badgeColor || '#38bdf8'}50`
+                        border: `1px solid ${item.badgeColor || '#38bdf8'}40`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5
                       }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: item.badgeColor || '#38bdf8' }} />
                         {item.badge}
                       </span>
                     )}
 
-                    <span style={{
-                      fontSize: '0.68rem',
-                      fontWeight: 700,
-                      color: isSelected ? '#cbd5e1' : '#64748b',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>
-                      {item.category}
-                    </span>
+                    {isSelected ? (
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: '#38bdf8',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        padding: '2px 7px',
+                        borderRadius: 5
+                      }}>
+                        ↵
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        color: '#64748b',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        {item.category}
+                      </span>
+                    )}
                   </div>
                 </div>
               )
@@ -578,17 +671,19 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 22px',
-          background: 'rgba(6, 10, 20, 0.98)',
+          padding: '12px 24px',
+          background: 'rgba(6, 10, 20, 0.95)',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           fontSize: '0.74rem',
           color: '#64748b'
         }}>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <span><kbd style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>↑↓</kbd> Navigate</span>
-            <span><kbd style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>↵</kbd> Open Record / Run</span>
-            <span><kbd style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>ESC</kbd> Close</span>
+          <div style={{ display: 'flex', gap: 18 }}>
+            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>↑↓</kbd> Navigate</span>
+            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>↵</kbd> Select</span>
+            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>Tab</kbd> Filter Category</span>
+            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>ESC</kbd> Close</span>
           </div>
+
           <span style={{ color: '#38bdf8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8' }} />
             RiskShield Command Intelligence
