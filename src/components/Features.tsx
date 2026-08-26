@@ -1,97 +1,149 @@
-import { useEffect, useRef } from 'react'
-
-const FEATURES = [
-  {
-    icon: '⚡',
-    iconClass: 'lp-bento-icon-blue',
-    title: '3-Pass Multi-Source Reconciliation',
-    desc: 'Deterministic exact, fuzzy (±1% MDR), and partial short-pay matching across Bank, Ledger, and Invoice feeds in under 3ms.',
-    stats: ['86.4% Pass 1', '9.2% Pass 2', '2.8ms Runtime'],
-    span: true,
-  },
-  {
-    icon: '🔮',
-    iconClass: 'lp-bento-icon-indigo',
-    title: 'Isolation Forest ML',
-    desc: '6-dimensional unsupervised anomaly detection with 98.7% AUC-ROC precision and automatic false-positive suppression.',
-    stats: ['6-D Vectors', '98.7% Precision'],
-  },
-  {
-    icon: '🛡️',
-    iconClass: 'lp-bento-icon-red',
-    title: '1-Click Exception Workbench',
-    desc: 'Auto-classify and batch-resolve exceptions with GAAP/IFRS compliant fixes — debit memos, suspense clearing, duplicate voiding.',
-    stats: ['7 GAAP Codes', '1-Click Resolve'],
-  },
-  {
-    icon: '🏛️',
-    iconClass: 'lp-bento-icon-amber',
-    title: 'Statutory Tax Defense',
-    desc: 'Mitigate Section 270A 200% penalties with Section 144B e-filing, Form 26A certificates, and CA DSC Class-3 digital signing.',
-    stats: ['CBDT 115BAA', 'DIN Verified'],
-  },
-  {
-    icon: '📈',
-    iconClass: 'lp-bento-icon-cyan',
-    title: 'Forward Cash Forecaster',
-    desc: 'T+1 to T+7 daily liquidity trajectories with epistemic confidence bounds and interactive DSO lag stress-testing.',
-    stats: ['T+7 Horizon', '95% Confidence'],
-    span: true,
-  },
-]
+import type { MouseEvent } from 'react'
 
 export default function Features() {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const items = container.querySelectorAll('.reveal-item')
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const el = entry.target as HTMLElement
-            const idx = Array.from(items).indexOf(el)
-            el.style.transitionDelay = `${idx * 100}ms`
-            el.classList.add('revealed')
-            observer.unobserve(el)
-          }
-        })
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-    )
-
-    items.forEach((item) => observer.observe(item))
-    return () => observer.disconnect()
-  }, [])
+  function handleCardMouseMove(e: MouseEvent<HTMLDivElement>) {
+    const card = e.currentTarget
+    const rect = card.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    card.style.setProperty('--card-x', `${x}px`)
+    card.style.setProperty('--card-y', `${y}px`)
+  }
 
   return (
-    <section id="features" className="lp-section lp-section-light" style={{ background: '#fff' }}>
+    <section id="features" className="lp-section" style={{ background: '#060913' }}>
       <div className="lp-wrap">
         <div className="lp-section-head">
-          <div className="lp-badge lp-badge-blue">
-            <span className="lp-badge-dot" />
-            PLATFORM CAPABILITIES
+          <div className="lp-badge-shimmer">
+            <span className="lp-pulse-dot" />
+            CORE CAPABILITIES
           </div>
-          <h2>Everything You Need to Control Finance</h2>
-          <p>From ingestion to statutory defense — a unified platform replacing spreadsheets, manual matching, and compliance gaps.</p>
+          <h2>Architected for Zero Financial Variance</h2>
+          <p>Every layer of the RiskShield engine is designed to eliminate manual spreadsheet matching, detect subtle fraud, and certify tax compliance.</p>
         </div>
 
-        <div className="lp-bento" ref={containerRef}>
-          {FEATURES.map(f => (
-            <div key={f.title} className={`lp-card lp-bento-item reveal-item ${f.span ? 'span-2' : ''}`}>
-              <div className={`lp-bento-icon ${f.iconClass}`}>{f.icon}</div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-              <div className="lp-bento-mini">
-                {f.stats.map(s => (
-                  <span key={s} className="lp-bento-stat">{s}</span>
-                ))}
+        <div className="lp-bento-grid">
+          {/* Card 1: 3-Pass Rule Engine (Span 2) */}
+          <div
+            className="lp-glass-card lp-bento-card span-2"
+            onMouseMove={handleCardMouseMove}
+          >
+            <div>
+              <div className="lp-bento-icon-glow">⚡</div>
+              <div className="lp-bento-title">3-Pass Deterministic Matching Engine</div>
+              <p className="lp-bento-desc">
+                Executes multi-pass matching across Bank feeds, ERP General Ledgers, and GST e-Invoices. Pass 1 locks exact SHA-256 hash matches (0.00 delta); Pass 2 reconciles payment gateway MDR fees within ±1.5% tolerance; Pass 3 aggregates partial short-pay vouchers.
+              </p>
+            </div>
+
+            <div style={{
+              background: 'rgba(6, 10, 20, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 12,
+              padding: '16px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 12
+            }}>
+              <div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Pass 1 Exact</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', marginTop: 2 }}>86.4%</div>
+                <div style={{ fontSize: '0.68rem', color: '#86efac' }}>Zero variance lock</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Pass 2 Fuzzy</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', marginTop: 2 }}>9.2%</div>
+                <div style={{ fontSize: '0.68rem', color: '#bae6fd' }}>MDR auto-split</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Throughput</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#a78bfa', marginTop: 2 }}>2.8 ms</div>
+                <div style={{ fontSize: '0.68rem', color: '#ddd6fe' }}>500 recs / batch</div>
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Card 2: 6-D Isolation Forest ML */}
+          <div
+            className="lp-glass-card lp-bento-card"
+            onMouseMove={handleCardMouseMove}
+          >
+            <div>
+              <div className="lp-bento-icon-glow" style={{ color: '#a78bfa', borderColor: 'rgba(167, 139, 250, 0.3)' }}>🔮</div>
+              <div className="lp-bento-title">6-D Isolation Forest ML</div>
+              <p className="lp-bento-desc">
+                High-dimensional unsupervised anomaly detection analyzing variance delta, settlement window lag, round-number frequency, FX volatility, counterparty velocity, and GL account deviation.
+              </p>
+            </div>
+
+            <div style={{ background: 'rgba(6, 10, 20, 0.7)', borderRadius: 12, padding: '14px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: 6 }}>
+                <span style={{ color: '#94a3b8' }}>Anomaly Detection Precision:</span>
+                <strong style={{ color: '#4ade80' }}>98.7% AUC-ROC</strong>
+              </div>
+              <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: '98.7%', height: '100%', background: 'linear-gradient(90deg, #38bdf8, #4ade80)' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: 1-Click Exception Workbench */}
+          <div
+            className="lp-glass-card lp-bento-card"
+            onMouseMove={handleCardMouseMove}
+          >
+            <div>
+              <div className="lp-bento-icon-glow" style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.3)' }}>🛡️</div>
+              <div className="lp-bento-title">1-Click GAAP Settlement</div>
+              <p className="lp-bento-desc">
+                Automatically categorizes discrepancies into 7 GAAP exception codes. Batch-apply debit memos, clear suspense GL 2190, void duplicates, or log MDR fee splits in milliseconds.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['Debit Memos', 'Suspense GL 2190', 'Duplicate Void', 'FX Spot Adj'].map(t => (
+                <span key={t} style={{ fontSize: '0.72rem', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.25)', color: '#fde68a', padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+                  ✓ {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 4: Statutory Tax Defense Terminal (Span 2) */}
+          <div
+            className="lp-glass-card lp-bento-card span-2"
+            onMouseMove={handleCardMouseMove}
+          >
+            <div>
+              <div className="lp-bento-icon-glow" style={{ color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.3)' }}>🏛️</div>
+              <div className="lp-bento-title">Statutory Tax &amp; DIN Notice Defense Terminal</div>
+              <p className="lp-bento-desc">
+                Simulate corporate tax liabilities across Section 115BAA (@25.17%), Old Regime (@34.94%), and Section 115BAB (@17.16%). Mitigate Section 270A 200% misreporting penalties through automated Section 144B e-filing submissions with Class-3 Digital Signature Certificates (DSC).
+              </p>
+            </div>
+
+            <div style={{
+              background: 'rgba(6, 10, 20, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 12,
+              padding: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 16
+            }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase' }}>Government NFAC Verification</div>
+                <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#f1f5f9', marginTop: 2 }}>
+                  DIN-2026-CBDT-849204 · UDIN 26084920AAAA0029
+                </div>
+              </div>
+              <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '6px 14px', borderRadius: 8, color: '#4ade80', fontSize: '0.78rem', fontWeight: 700 }}>
+                ✓ Sec 270A Protected
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

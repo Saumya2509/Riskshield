@@ -1,80 +1,60 @@
-import { useState, useEffect, useRef } from 'react'
-import { useScrollReveal } from '../hooks/useScrollReveal'
+import { useState } from 'react'
 
 const FAQS = [
   {
-    q: 'How does 3-way reconciliation differ from 2-way matching?',
-    a: 'Traditional 2-way matching compares invoices against purchase orders. RiskShield\'s 3-way engine cross-references Bank Statements, ERP General Ledgers, AND GST e-Invoices simultaneously — catching discrepancies that 2-way matching fundamentally cannot detect, like settlement lag variances and gateway fee absorption.'
+    q: 'How does RiskShield 3-way reconciliation differ from traditional 2-way matching?',
+    a: 'Traditional 2-way matching only cross-checks purchase invoices against vendor bills. RiskShield simultaneously ingests Bank MT940 statements, ERP General Ledger postings (SAP/Oracle), AND statutory GST e-Invoices. This catches settlement lag variances, gateway MDR fee deductions, and cross-border WHT discrepancies that 2-way matching fundamentally misses.'
   },
   {
-    q: 'What happens when the engine encounters an exception?',
-    a: 'Exceptions are auto-classified into 7 GAAP standard codes (AMOUNT_MISMATCH, MISSING_REF, DUPLICATE, etc.) and routed to the 1-Click Exception Workbench. You can batch-resolve with compliant accounting fixes — debit memos, suspense GL 2190 clearing, or duplicate voiding — in milliseconds.'
+    q: 'What is the 3-Pass Rule Engine and how does it achieve sub-3ms latency?',
+    a: 'Pass 1 executes deterministic SHA-256 hash matching on identical amounts and reference IDs with zero delta. Pass 2 applies heuristic fuzzy matching to account for payment gateway fee absorption (±1.5% MDR) and settlement window lag (±2 days). Pass 3 flags partial short-pays and duplicate billings. The entire algorithm is compiled in optimized TypeScript executing 500 records in 2.8ms.'
   },
   {
-    q: 'How does the Section 270A penalty defense work?',
-    a: 'RiskShield maps expenses to corporate tax regimes (115BAA @ 25.17%, Old @ 34.94%) and generates statutory defense submissions with Section 144B e-filing, Form 26A certificates, and CA DSC Class-3 digital signatures. This mitigates the 200% misreporting penalty under Section 270A of the Income Tax Act.'
+    q: 'How does RiskShield mitigate Income Tax Section 270A penalties?',
+    a: 'Under Section 270A of the Income Tax Act, under-reporting or misreporting of income incurs a mandatory 200% penalty. RiskShield reconciles tax-deductible expenses against GST DRC-01 and Section 148 notices, automatically generating Section 144B e-filing defense submissions and Form 26A/201(1) certificates digitally signed with CA DSC Class-3 credentials.'
   },
   {
-    q: 'What data formats does the ingestion layer support?',
-    a: 'The normalizer accepts Bank MT940/CAMT.053 statements, SAP/Oracle ERP GL exports (CSV/XLSX), and GST e-Invoice JSON/XML feeds. All data is UTF-8 normalized and deduplicated before entering the 3-pass matching pipeline.'
+    q: 'Can RiskShield integrate with SAP ECC, Oracle NetSuite, and custom bank feeds?',
+    a: 'Yes. RiskShield\'s normalization layer natively accepts standard banking MT940 and CAMT.053 XML feeds, ERP General Ledger CSV/XLSX exports, and GST e-Invoice JSON dumps. All records are normalized with UTF-8 encoding and sanitized before entering the 3-pass reconciliation pipeline.'
   },
   {
-    q: 'How accurate is the Isolation Forest anomaly detection?',
-    a: 'The 6-dimensional Isolation Forest model achieves 98.7% AUC-ROC precision across variance delta, settlement lag, FX volatility, round-number frequency, counterparty velocity, and GL account deviation vectors — with built-in false-positive suppression.'
-  },
+    q: 'How does the forward cash forecaster model liquidity across T+1 to T+7?',
+    a: 'The forward cash forecaster computes opening bank balances, models accounts receivable settlement velocity with front-loaded payout curves, applies dynamic DSO lag stress-testing, and projects closing liquidity bands with 95% epistemic confidence intervals.'
+  }
 ]
 
 export default function FAQ() {
-  const [openIdx, setOpenIdx] = useState<number | null>(null)
-  const sectionRef = useScrollReveal<HTMLElement>(0.05)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    const items = container.querySelectorAll('.reveal-item')
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const el = entry.target as HTMLElement
-            const idx = Array.from(items).indexOf(el)
-            el.style.transitionDelay = `${idx * 80}ms`
-            el.classList.add('revealed')
-            observer.unobserve(el)
-          }
-        })
-      },
-      { threshold: 0.1 }
-    )
-    items.forEach((item) => observer.observe(item))
-    return () => observer.disconnect()
-  }, [])
+  const [openIdx, setOpenIdx] = useState<number | null>(0)
 
   return (
-    <section id="faq" className="lp-section lp-section-light" ref={sectionRef.ref}>
-      <div className="lp-wrap">
+    <section id="faq" className="lp-section" style={{ background: '#070b14' }}>
+      <div className="lp-wrap" style={{ maxWidth: '840px' }}>
         <div className="lp-section-head">
-          <div className="lp-badge lp-badge-blue">
-            <span className="lp-badge-dot" />
-            FAQ
+          <div className="lp-badge-shimmer">
+            <span className="lp-pulse-dot" />
+            FREQUENTLY ASKED QUESTIONS
           </div>
-          <h2>Frequently Asked Questions</h2>
-          <p>Common questions about RiskShield's reconciliation engine, ML scoring, and statutory defense capabilities.</p>
+          <h2>Everything You Need to Know</h2>
+          <p>Clear answers on 3-way reconciliation architecture, Section 270A penalty protection, and enterprise integrations.</p>
         </div>
 
-        <div className="lp-faq-list" ref={containerRef}>
+        <div>
           {FAQS.map((faq, i) => (
             <div
               key={i}
-              className={`lp-faq-item reveal-item ${openIdx === i ? 'is-open' : ''}`}
+              className={`lp-faq-item ${openIdx === i ? 'open' : ''}`}
             >
-              <button className="lp-faq-q" onClick={() => setOpenIdx(openIdx === i ? null : i)}>
+              <button
+                className="lp-faq-btn"
+                onClick={() => setOpenIdx(openIdx === i ? null : i)}
+              >
                 <span>{faq.q}</span>
-                <span className="lp-faq-chevron">▼</span>
+                <span style={{ fontSize: '1.2rem', color: openIdx === i ? '#38bdf8' : '#64748b', transition: 'transform 0.2s', transform: openIdx === i ? 'rotate(45deg)' : 'none' }}>
+                  +
+                </span>
               </button>
-              <div className="lp-faq-a">
-                <p>{faq.a}</p>
+              <div className="lp-faq-body">
+                <p style={{ margin: 0 }}>{faq.a}</p>
               </div>
             </div>
           ))}

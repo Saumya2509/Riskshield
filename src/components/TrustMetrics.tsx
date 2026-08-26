@@ -1,77 +1,66 @@
 import { useEffect, useRef, useState } from 'react'
 
 const METRICS = [
-  { value: 98.4, suffix: '%', label: '3-Way Match Rate', color: '#16a34a' },
-  { value: 2.8, suffix: 'ms', label: 'Engine Latency', color: '#2563eb' },
-  { value: 0, prefix: '₹', suffix: '', label: 'Sec 270A Penalty', color: '#6366f1', display: '₹0' },
-  { value: 7, prefix: 'T+', suffix: ' Days', label: 'Liquidity Forecast', color: '#d97706' },
+  { val: 98.4, suffix: '%', label: '3-Way Match Rate', sub: 'Pass 1 Exact + Pass 2 Fuzzy', color: '#10b981' },
+  { val: 2.8, suffix: ' ms', label: 'Processing Latency', sub: 'Sub-3ms per 500 records', color: '#38bdf8' },
+  { val: 0, prefix: '₹', suffix: '', label: 'Sec 270A Penalty Paid', sub: '100% Mitigated via DIN Trail', color: '#a78bfa', display: '₹0' },
+  { val: 7, prefix: 'T+', suffix: ' Days', label: 'Forward Cash Runway', sub: '95% Epistemic Confidence', color: '#fbbf24' },
 ]
 
-function AnimatedNumber({ value, prefix = '', suffix = '', display, color }: {
-  value: number; prefix?: string; suffix?: string; display?: string; color: string
-}) {
-  const [current, setCurrent] = useState(0)
+function Counter({ item }: { item: typeof METRICS[0] }) {
+  const [num, setNum] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
-  const animated = useRef(false)
+  const isAnimated = useRef(false)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !animated.current) {
-          animated.current = true
-          const start = performance.now()
-          const duration = 1200
-
-          const tick = (now: number) => {
-            const progress = Math.min((now - start) / duration, 1)
-            const eased = 1 - Math.pow(1 - progress, 3)
-            setCurrent(eased * value)
-            if (progress < 1) requestAnimationFrame(tick)
-          }
-          requestAnimationFrame(tick)
-          observer.unobserve(el)
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !isAnimated.current) {
+        isAnimated.current = true
+        const start = performance.now()
+        const duration = 1200
+        const frame = (now: number) => {
+          const progress = Math.min((now - start) / duration, 1)
+          const easeOut = 1 - Math.pow(1 - progress, 3)
+          setNum(easeOut * item.val)
+          if (progress < 1) requestAnimationFrame(frame)
         }
-      },
-      { threshold: 0.5 }
-    )
+        requestAnimationFrame(frame)
+        observer.unobserve(el)
+      }
+    }, { threshold: 0.3 })
 
     observer.observe(el)
     return () => observer.disconnect()
-  }, [value])
+  }, [item.val])
 
-  const formatted = display && current >= value
-    ? display
-    : `${prefix}${value >= 10 ? Math.round(current) : current.toFixed(1)}${suffix}`
+  const formatted = item.display && num >= item.val
+    ? item.display
+    : `${item.prefix || ''}${item.val < 10 ? num.toFixed(1) : Math.round(num)}${item.suffix}`
 
   return (
-    <div ref={ref} className="lp-trust-value" style={{ color }}>
-      {formatted}
+    <div ref={ref} className="lp-trust-card">
+      <div className="lp-trust-num" style={{ color: item.color }}>
+        {formatted}
+      </div>
+      <div className="lp-trust-desc">{item.label}</div>
+      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>{item.sub}</div>
     </div>
   )
 }
 
 export default function TrustMetrics() {
   return (
-    <section className="lp-trust">
+    <div className="lp-trust-strip">
       <div className="lp-wrap">
         <div className="lp-trust-grid">
-          {METRICS.map(m => (
-            <div key={m.label} className="lp-trust-item">
-              <AnimatedNumber
-                value={m.value}
-                prefix={(m as any).prefix}
-                suffix={m.suffix}
-                display={(m as any).display}
-                color={m.color}
-              />
-              <div className="lp-trust-label">{m.label}</div>
-            </div>
+          {METRICS.map((m) => (
+            <Counter key={m.label} item={m} />
           ))}
         </div>
       </div>
-    </section>
+    </div>
   )
 }
