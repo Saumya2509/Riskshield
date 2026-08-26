@@ -1,14 +1,13 @@
 // ─── Finance Context ──────────────────────────────────────────────────────────
 // Shared state between Finance Controller and Dashboard.
-// Wrap <App> with <FinanceContextProvider> — persists all reconciliation,
-// ML anomaly scoring, exceptions, and defended tax notices across browser refreshes.
+// Uses sessionStorage so data persists across browser refreshes (F5),
+// but automatically resets to clean state when the browser tab/window is closed.
 // ─────────────────────────────────────────────────────────────────────────────
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import type { ReconciliationReport, MatchResult, MatchPass } from './reconciliationEngine'
 import { runReconciliation } from './reconciliationEngine'
 import type { MLBatchResult } from './mlScorer'
-import { runMLScoring } from './mlScorer'
 import { syncReportToSupabase } from './supabaseClient'
 
 export interface ResolutionFix {
@@ -44,9 +43,9 @@ interface FinanceContextType {
   saveFixesToMultiSource: () => ReconciliationReport | null
 }
 
-function loadStorage<T>(key: string, fallback: T): T {
+function loadSession<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(`rs_${key}`)
+    const raw = sessionStorage.getItem(`rs_${key}`)
     if (!raw) return fallback
     return JSON.parse(raw) as T
   } catch {
@@ -54,11 +53,11 @@ function loadStorage<T>(key: string, fallback: T): T {
   }
 }
 
-function saveStorage<T>(key: string, val: T): void {
+function saveSession<T>(key: string, val: T): void {
   try {
-    localStorage.setItem(`rs_${key}`, JSON.stringify(val))
+    sessionStorage.setItem(`rs_${key}`, JSON.stringify(val))
   } catch {
-    /* localStorage quota or private mode fallback */
+    /* sessionStorage quota or private mode fallback */
   }
 }
 
@@ -67,7 +66,7 @@ const FinanceContext = createContext<FinanceContextType>({
   mlResult: null,
   lastRunAt: null,
   activeFileName: null,
-  recordCount: 500,
+  recordCount: 0,
   resolvedMap: {},
   defendedNotices: {},
   setReport: () => {},
@@ -83,141 +82,128 @@ const FinanceContext = createContext<FinanceContextType>({
 })
 
 export function FinanceContextProvider({ children }: { children: ReactNode }) {
-  // Initialize state from localStorage so page reload never wipes data
+  // Initialize state from sessionStorage (persists across page reload/F5, wipes on close)
   const [report, setReportState] = useState<ReconciliationReport | null>(() => {
-    const cached = loadStorage<ReconciliationReport | null>('active_report', null)
-    if (cached) return cached
-    const initial = runReconciliation()
-    saveStorage('active_report', initial)
-    return initial
+    return loadSession<ReconciliationReport | null>('active_report', null)
   })
 
   const [mlResult, setMLResultState] = useState<MLBatchResult | null>(() => {
-    const cached = loadStorage<MLBatchResult | null>('ml_result', null)
-    if (cached) return cached
-    const initialReport = report || runReconciliation()
-    const ml = runMLScoring(initialReport.results.map(r => r.record))
-    saveStorage('ml_result', ml)
-    return ml
+    return loadSession<MLBatchResult | null>('ml_result', null)
   })
 
   const [lastRunAt, setLastRunAt] = useState<Date | null>(() => {
-    const cached = loadStorage<string | null>('last_run_at', null)
-    return cached ? new Date(cached) : new Date()
+    const cached = loadSession<string | null>('last_run_at', null)
+    return cached ? new Date(cached) : null
   })
 
   const [activeFileName, setActiveFileNameState] = useState<string | null>(() => {
-    return loadStorage<string | null>('active_filename', 'batch_1_enterprise_recon_500.csv')
+    return loadSession<string | null>('active_filename', null)
   })
 
   const [recordCount, setRecordCountState] = useState<number>(() => {
-    return loadStorage<number>('record_count', 500)
+    return loadSession<number>('record_count', 0)
   })
 
   const [resolvedMap, setResolvedMap] = useState<Record<string, ResolutionFix>>(() => {
-    return loadStorage<Record<string, ResolutionFix>>('resolved_map', {})
+    return loadSession<Record<string, ResolutionFix>>('resolved_map', {})
   })
 
   const [defendedNotices, setDefendedNotices] = useState<Record<string, DefendedNotice>>(() => {
-    return loadStorage<Record<string, DefendedNotice>>('defended_notices', {})
+    return loadSession<Record<string, DefendedNotice>>('defended_notices', {})
   })
 
-  // Auto-sync state changes to localStorage
+  // Auto-sync state changes to sessionStorage
   useEffect(() => {
-    if (report) saveStorage('active_report', report)
+    if (report) saveSession('active_report', report)
+    else sessionStorage.removeItem('rs_active_report')
   }, [report])
 
   useEffect(() => {
-    if (mlResult) saveStorage('ml_result', mlResult)
+    if (mlResult) saveSession('ml_result', mlResult)
+    else sessionStorage.removeItem('rs_ml_result')
   }, [mlResult])
 
   useEffect(() => {
-    saveStorage('resolved_map', resolvedMap)
+    saveSession('resolved_map', resolvedMap)
   }, [resolvedMap])
 
   useEffect(() => {
-    saveStorage('defended_notices', defendedNotices)
+    saveSession('defended_notices', defendedNotices)
   }, [defendedNotices])
 
   useEffect(() => {
-    if (activeFileName) saveStorage('active_filename', activeFileName)
+    if (activeFileName) saveSession('active_filename', activeFileName)
+    else sessionStorage.removeItem('rs_active_filename')
   }, [activeFileName])
 
   useEffect(() => {
-    saveStorage('record_count', recordCount)
+    saveSession('record_count', recordCount)
   }, [recordCount])
 
   useEffect(() => {
-    if (lastRunAt) saveStorage('last_run_at', lastRunAt.toISOString())
+    if (lastRunAt) saveSession('last_run_at', lastRunAt.toISOString())
+    else sessionStorage.removeItem('rs_last_run_at')
   }, [lastRunAt])
 
   function setReport(r: ReconciliationReport) {
     setReportState(r)
     const now = new Date()
     setLastRunAt(now)
-    saveStorage('active_report', r)
-    saveStorage('last_run_at', now.toISOString())
+    saveSession('active_report', r)
+    saveSession('last_run_at', now.toISOString())
   }
 
   function setMLResult(r: MLBatchResult) {
     setMLResultState(r)
-    saveStorage('ml_result', r)
+    saveSession('ml_result', r)
   }
 
   function setActiveFileName(name: string) {
     setActiveFileNameState(name)
-    saveStorage('active_filename', name)
+    saveSession('active_filename', name)
   }
 
   function setRecordCount(count: number) {
     setRecordCountState(count)
-    saveStorage('record_count', count)
+    saveSession('record_count', count)
   }
 
   function applyFix(recordId: string, fix: ResolutionFix) {
     setResolvedMap(prev => {
       const next = { ...prev, [recordId]: fix }
-      saveStorage('resolved_map', next)
+      saveSession('resolved_map', next)
       return next
     })
   }
 
   function resetFixes() {
     setResolvedMap({})
-    saveStorage('resolved_map', {})
+    saveSession('resolved_map', {})
   }
 
   function defendNotice(recordId: string, info: DefendedNotice) {
     setDefendedNotices(prev => {
       const next = { ...prev, [recordId]: info }
-      saveStorage('defended_notices', next)
+      saveSession('defended_notices', next)
       return next
     })
   }
 
   function resetDefendedNotices() {
     setDefendedNotices({})
-    saveStorage('defended_notices', {})
+    saveSession('defended_notices', {})
   }
 
   function resetReconciliation() {
-    const fresh = runReconciliation()
-    const ml = runMLScoring(fresh.results.map(r => r.record))
-    setReportState(fresh)
-    setMLResultState(ml)
-    setActiveFileNameState('batch_1_enterprise_recon_500.csv')
-    setRecordCountState(500)
-    setLastRunAt(new Date())
+    setReportState(null)
+    setMLResultState(null)
+    setActiveFileNameState(null)
+    setRecordCountState(0)
+    setLastRunAt(null)
     setResolvedMap({})
     setDefendedNotices({})
 
-    saveStorage('active_report', fresh)
-    saveStorage('ml_result', ml)
-    saveStorage('active_filename', 'batch_1_enterprise_recon_500.csv')
-    saveStorage('record_count', 500)
-    saveStorage('resolved_map', {})
-    saveStorage('defended_notices', {})
-    saveStorage('last_run_at', new Date().toISOString())
+    sessionStorage.clear()
   }
 
   function saveFixesToMultiSource(): ReconciliationReport | null {
@@ -267,8 +253,8 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
     setReportState(updatedReport)
     const now = new Date()
     setLastRunAt(now)
-    saveStorage('active_report', updatedReport)
-    saveStorage('last_run_at', now.toISOString())
+    saveSession('active_report', updatedReport)
+    saveSession('last_run_at', now.toISOString())
 
     // Sync to Supabase in background
     syncReportToSupabase(updatedReport, activeFileName || 'batch_1_enterprise_recon_500.csv').catch(err => {
