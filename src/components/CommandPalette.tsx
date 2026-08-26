@@ -33,10 +33,9 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
   const listRef = useRef<HTMLDivElement | null>(null)
   const ctx = useFinanceContext()
 
-  // Active report
-  const activeReport = useMemo(() => {
-    return ctx.report || runReconciliation()
-  }, [ctx.report])
+  // Only use real report if user has actually loaded one; never generate fake/static data
+  const hasLoadedReport = !!ctx.report
+  const activeReport = ctx.report
 
   // Reset state when opened
   useEffect(() => {
@@ -65,45 +64,54 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     onClose()
   }
 
-  // Base navigation and action items
+  // Base navigation, batches and quick action items
   const baseItems: PaletteItem[] = useMemo(() => {
-    return [
+    const list: PaletteItem[] = [
       // Navigation Pages
       {
         id: 'nav-dash',
         title: 'Executive Dashboard',
-        subtitle: 'Reconciliation overview, 3-way balance sheet, and live feed telemetry',
+        subtitle: hasLoadedReport
+          ? `${activeReport?.totalRecords} records active · ${activeReport?.matchRate.toFixed(1)}% match rate`
+          : 'Reconciliation overview, balance sheet, and live feed telemetry',
         category: 'Pages',
         icon: '📊',
+        badge: hasLoadedReport ? `${activeReport?.matchRate.toFixed(0)}% Matched` : 'Dashboard',
+        badgeBg: hasLoadedReport ? '#064e3b' : '#1e293b',
+        badgeColor: hasLoadedReport ? '#6ee7b7' : '#94a3b8',
         action: () => { window.location.hash = '#/dashboard'; onClose(); }
       },
       {
         id: 'nav-recon',
         title: '3-Way Reconciliation Engine',
-        subtitle: `Dataset: ${ctx.activeFileName || 'Batch #1'} · ${activeReport.totalRecords} records · ${activeReport.matchRate.toFixed(1)}% match rate`,
+        subtitle: hasLoadedReport
+          ? `Active Batch: ${ctx.activeFileName || 'Loaded Batch'} · ${activeReport?.totalRecords} records`
+          : 'Upload custom Bank, Ledger & Invoice feeds or select a test batch',
         category: 'Pages',
         icon: '⚡',
-        badge: `${activeReport.matchRate.toFixed(0)}% Matched`,
-        badgeBg: 'rgba(16, 185, 129, 0.16)',
-        badgeColor: '#34d399',
+        badge: hasLoadedReport ? `${activeReport?.totalRecords} Recs` : 'Idle',
+        badgeBg: hasLoadedReport ? '#172554' : '#1e293b',
+        badgeColor: hasLoadedReport ? '#93c5fd' : '#94a3b8',
         action: () => { window.location.hash = '#/reconciliation'; onClose(); }
       },
       {
         id: 'nav-exc',
         title: '1-Click Exceptions Workbench',
-        subtitle: `${activeReport.exceptions} discrepancies requiring GAAP settlement or debit memos`,
+        subtitle: hasLoadedReport
+          ? `${activeReport?.exceptions} exceptions requiring GAAP settlement or debit memos`
+          : 'No exceptions loaded. Run reconciliation on a batch to detect anomalies',
         category: 'Pages',
         icon: '🛡️',
-        badge: `${activeReport.exceptions} Open`,
-        badgeBg: 'rgba(239, 68, 68, 0.16)',
-        badgeColor: '#f87171',
+        badge: hasLoadedReport ? `${activeReport?.exceptions} Open` : '0 Open',
+        badgeBg: hasLoadedReport && (activeReport?.exceptions || 0) > 0 ? '#450a0a' : '#1e293b',
+        badgeColor: hasLoadedReport && (activeReport?.exceptions || 0) > 0 ? '#fca5a5' : '#94a3b8',
         isException: true,
         action: () => { window.location.hash = '#/exceptions'; onClose(); }
       },
       {
         id: 'nav-cash',
         title: 'Forward Cash Forecaster',
-        subtitle: 'T+1 to T+7 daily liquidity trajectories and DSO lag stress-testing (95% confidence)',
+        subtitle: 'T+1 to T+7 daily liquidity trajectories and DSO stress-testing',
         category: 'Pages',
         icon: '📈',
         action: () => { window.location.hash = '#/cash-forecast'; onClose(); }
@@ -111,18 +119,18 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       {
         id: 'nav-tax',
         title: 'Statutory Tax & Notice Defense',
-        subtitle: 'Section 115BAA vs Old Regime, Section 270A penalty shield, and Form 26A / 15CB certificates',
+        subtitle: 'Section 115BAA vs Old Regime, Section 270A penalty shield, and Form 26A',
         category: 'Pages',
         icon: '🏛️',
-        badge: 'CBDT DIN',
-        badgeBg: 'rgba(168, 85, 247, 0.16)',
-        badgeColor: '#c084fc',
+        badge: 'Tax Shield',
+        badgeBg: '#2e1065',
+        badgeColor: '#d8b4fe',
         action: () => { window.location.hash = '#/tax-matcher'; onClose(); }
       },
       {
         id: 'nav-rep',
         title: 'Executive Audit Reports',
-        subtitle: 'Certified PDF/Excel exports with CA DSC Class-3 cryptographic digital signature',
+        subtitle: 'Certified PDF/Excel exports with CA DSC Class-3 digital signatures',
         category: 'Pages',
         icon: '📑',
         action: () => { window.location.hash = '#/reports'; onClose(); }
@@ -130,7 +138,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       {
         id: 'nav-ai',
         title: 'Settlement AI Copilot',
-        subtitle: 'Thought-step financial reasoning and automated ledger discrepancy Q&A agent',
+        subtitle: 'Thought-step financial reasoning and automated discrepancy Q&A',
         category: 'Pages',
         icon: '🤖',
         action: () => { window.location.hash = '#/ai-assistant'; onClose(); }
@@ -138,7 +146,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       {
         id: 'nav-set',
         title: 'Tolerances & Engine Settings',
-        subtitle: 'Configure MDR fee tolerances (±1.5%), date lag windows (±2d), and Supabase connection',
+        subtitle: 'Configure fee tolerance thresholds, date lag windows, and API keys',
         category: 'Pages',
         icon: '⚙️',
         action: () => { window.location.hash = '#/settings'; onClose(); }
@@ -147,57 +155,57 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       // Ingestion Batches
       {
         id: 'act-b1',
-        title: 'Load Batch #1 · Enterprise Multi-Entity (₹1.42 Cr)',
-        subtitle: '500 records · Standard 3-way reconciliation, timing delays, minor fee variance',
+        title: 'Load Batch #1 · Enterprise Multi-Entity',
+        subtitle: '500 records · Standard 3-way reconciliation (Bank, Ledger, Invoices)',
         category: 'Batches',
         icon: '📁',
         badge: 'Batch #1',
-        badgeBg: 'rgba(59, 130, 246, 0.16)',
-        badgeColor: '#60a5fa',
+        badgeBg: '#1e3a8a',
+        badgeColor: '#93c5fd',
         action: () => loadBatch(1)
       },
       {
         id: 'act-b2',
-        title: 'Load Batch #2 · Global Cross-Border FX (₹98.2 Lakh)',
+        title: 'Load Batch #2 · Global Cross-Border FX',
         subtitle: '500 records · Multi-currency conversions (USD/EUR/INR), spot FX delta',
         category: 'Batches',
         icon: '🌐',
         badge: 'Batch #2',
-        badgeBg: 'rgba(99, 102, 241, 0.16)',
-        badgeColor: '#818cf8',
+        badgeBg: '#312e81',
+        badgeColor: '#a5b4fc',
         action: () => loadBatch(2)
       },
       {
         id: 'act-b3',
-        title: 'Load Batch #3 · High-Volume E-Commerce / UPI (₹1.52 Cr)',
-        subtitle: '500 records · High-frequency micropayments, Payment Gateway MDR fees (0.9% - 1.5%)',
+        title: 'Load Batch #3 · High-Volume E-Commerce / UPI',
+        subtitle: '500 records · Payment gateway MDR fee tolerances (0.9% - 1.5%)',
         category: 'Batches',
         icon: '🛍️',
         badge: 'Batch #3',
-        badgeBg: 'rgba(245, 158, 11, 0.16)',
-        badgeColor: '#fbbf24',
+        badgeBg: '#451a03',
+        badgeColor: '#fcd34d',
         action: () => loadBatch(3)
       },
       {
         id: 'act-b4',
-        title: 'Load Batch #4 · SaaS Recurring Subscriptions (₹88.4 Lakh)',
-        subtitle: '500 records · Prorated charges, billing upgrades, missing invoice references',
+        title: 'Load Batch #4 · SaaS Recurring Subscriptions',
+        subtitle: '500 records · Prorated charges, billing upgrades, missing references',
         category: 'Batches',
         icon: '🔄',
         badge: 'Batch #4',
-        badgeBg: 'rgba(6, 182, 212, 0.16)',
-        badgeColor: '#22d3ee',
+        badgeBg: '#164e63',
+        badgeColor: '#67e8f9',
         action: () => loadBatch(4)
       },
       {
         id: 'act-b5',
-        title: 'Load Batch #5 · Year-End Statutory Audit (₹2.10 Cr)',
-        subtitle: '500 records · Unbooked accruals, orphan general ledgers, tax scrutiny audits',
+        title: 'Load Batch #5 · Year-End Statutory Audit',
+        subtitle: '500 records · Unbooked accruals, orphan ledgers, tax scrutiny audits',
         category: 'Batches',
         icon: '🏛️',
         badge: 'Batch #5',
-        badgeBg: 'rgba(16, 185, 129, 0.16)',
-        badgeColor: '#34d399',
+        badgeBg: '#064e3b',
+        badgeColor: '#6ee7b7',
         action: () => loadBatch(5)
       },
 
@@ -205,31 +213,37 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       {
         id: 'act-solve-all',
         title: '1-Click Solve All Exceptions',
-        subtitle: 'Auto-apply GAAP debit memos, suspense clearing (GL 2190), and fee splits',
+        subtitle: hasLoadedReport
+          ? `Auto-resolve all ${activeReport?.exceptions} exceptions via GAAP debit memos`
+          : 'Requires an active reconciliation batch with detected exceptions',
         category: 'Quick Actions',
         icon: '⚡',
-        badge: '1-Click Solve',
-        badgeBg: 'rgba(16, 185, 129, 0.22)',
-        badgeColor: '#4ade80',
+        badge: 'Action',
+        badgeBg: '#064e3b',
+        badgeColor: '#6ee7b7',
         action: () => { window.location.hash = '#/exceptions'; onClose(); }
       },
       {
         id: 'tax-115baa',
-        title: 'Simulate Section 115BAA Tax Regime (25.17%)',
+        title: 'Simulate Section 115BAA Tax Savings',
         subtitle: 'Calculate 25.17% corporate tax savings vs 34.94% Old Regime with verified DIN',
         category: 'Quick Actions',
         icon: '💰',
-        badge: '25.17% Tax',
-        badgeBg: 'rgba(56, 189, 248, 0.22)',
-        badgeColor: '#38bdf8',
+        badge: 'Tax',
+        badgeBg: '#1e3a8a',
+        badgeColor: '#93c5fd',
         action: () => { window.location.hash = '#/tax-matcher'; onClose(); }
       }
     ]
-  }, [activeReport, ctx.activeFileName])
 
-  // Real 500-record items
+    return list
+  }, [hasLoadedReport, activeReport, ctx.activeFileName])
+
+  // Real live records: ONLY present when a real batch is actively loaded
   const recordItems: PaletteItem[] = useMemo(() => {
-    if (!activeReport || !activeReport.results) return []
+    if (!hasLoadedReport || !activeReport || !activeReport.results) {
+      return []
+    }
 
     return activeReport.results.map((r) => {
       const isFixed = !!ctx.resolvedMap[r.record.id]
@@ -237,24 +251,24 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       const isExc = r.status === 'Exception' && !isFixed
 
       const badgeBg = isFixed
-        ? 'rgba(16, 185, 129, 0.22)'
+        ? '#064e3b'
         : r.status === 'Exact'
-        ? 'rgba(16, 185, 129, 0.18)'
+        ? '#064e3b'
         : r.status === 'Fuzzy'
-        ? 'rgba(56, 189, 248, 0.18)'
+        ? '#172554'
         : r.status === 'Partial'
-        ? 'rgba(245, 158, 11, 0.18)'
-        : 'rgba(239, 68, 68, 0.22)'
+        ? '#451a03'
+        : '#450a0a'
 
       const badgeColor = isFixed
-        ? '#4ade80'
+        ? '#6ee7b7'
         : r.status === 'Exact'
-        ? '#4ade80'
+        ? '#6ee7b7'
         : r.status === 'Fuzzy'
-        ? '#38bdf8'
+        ? '#93c5fd'
         : r.status === 'Partial'
-        ? '#fbbf24'
-        : '#f87171'
+        ? '#fcd34d'
+        : '#fca5a5'
 
       const passText = r.pass ? `Pass ${r.pass}` : 'Exception'
       const exceptionInfo = r.exceptionCode ? `[${r.exceptionCode}] ` : ''
@@ -263,7 +277,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       return {
         id: `rec-${r.record.id}`,
         title: `${r.record.id} · ${r.record.counterparty}`,
-        subtitle: `${r.record.source} · ${passText} · ${exceptionInfo}${r.confidence}% confidence${deltaText}`,
+        subtitle: `${r.record.source} · ${passText} · ${exceptionInfo}${r.confidence}% conf${deltaText}`,
         category: 'Live Records',
         badge: statusLabel,
         badgeBg,
@@ -277,7 +291,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         }
       }
     })
-  }, [activeReport, ctx.resolvedMap])
+  }, [hasLoadedReport, activeReport, ctx.resolvedMap])
 
   // Category counts
   const categoryCounts = useMemo(() => {
@@ -291,7 +305,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     }
   }, [baseItems, recordItems])
 
-  // Filtered items
+  // Filtered list
   const filtered = useMemo(() => {
     let list: PaletteItem[] = []
 
@@ -309,7 +323,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       if (activeCategory === 'All') {
         return [
           ...baseItems.slice(0, 8),
-          ...recordItems.slice(0, 14)
+          ...recordItems.slice(0, 10)
         ]
       }
       return list.slice(0, 30)
@@ -322,7 +336,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     }).slice(0, 30)
   }, [search, activeCategory, baseItems, recordItems])
 
-  // Auto-scroll active item into view
+  // Auto-scroll selected item
   useEffect(() => {
     if (!listRef.current) return
     const activeEl = listRef.current.querySelector<HTMLElement>(`[data-palette-idx="${selectedIdx}"]`)
@@ -371,26 +385,26 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(2, 6, 15, 0.82)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         zIndex: 99999,
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: '8vh',
-        animation: 'fadeIn 0.15s ease-out'
+        paddingTop: '9vh',
+        animation: 'fadeIn 0.12s ease-out'
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '740px',
-          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(9, 14, 26, 0.98) 100%)',
-          border: '1px solid rgba(56, 189, 248, 0.35)',
-          borderRadius: '20px',
-          boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px -15px rgba(0, 0, 0, 0.9), 0 0 50px -10px rgba(37, 99, 235, 0.35)',
+          maxWidth: '700px',
+          background: '#0f172a',
+          border: '1px solid #334155',
+          borderRadius: '14px',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.1)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column'
@@ -400,41 +414,32 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 14,
-          padding: '18px 24px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(15, 23, 42, 0.8)'
+          gap: 12,
+          padding: '14px 18px',
+          borderBottom: '1px solid #1e293b',
+          background: '#0f172a'
         }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: 'rgba(37, 99, 235, 0.18)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            display: 'grid',
-            placeItems: 'center',
-            color: '#38bdf8',
-            fontSize: '1.1rem'
-          }}>
-            ⌕
-          </div>
+          <span style={{ color: '#94a3b8', fontSize: '1rem' }}>⌕</span>
 
           <input
             ref={inputRef}
             type="text"
             value={search}
             onChange={e => { setSearch(e.target.value); setSelectedIdx(0); }}
-            placeholder="Search commands, pages, or 500 live records (e.g. B1-BNK-001, Razorpay, 45000)..."
+            placeholder={
+              hasLoadedReport
+                ? `Search ${activeReport?.totalRecords} records, pages, batches, or tax notices...`
+                : 'Type a page, select a batch to reconcile, or search actions...'
+            }
             style={{
               flex: 1,
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: '#ffffff',
-              fontSize: '1.02rem',
-              fontWeight: 600,
-              fontFamily: 'inherit',
-              letterSpacing: '-0.01em'
+              color: '#f8fafc',
+              fontSize: '0.94rem',
+              fontWeight: 500,
+              fontFamily: 'inherit'
             }}
           />
 
@@ -443,16 +448,16 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               type="button"
               onClick={() => { setSearch(''); setSelectedIdx(0); inputRef.current?.focus(); }}
               style={{
-                background: 'rgba(255, 255, 255, 0.08)',
+                background: '#1e293b',
                 border: 'none',
                 color: '#94a3b8',
                 borderRadius: '50%',
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 display: 'grid',
                 placeItems: 'center',
                 cursor: 'pointer',
-                fontSize: '0.74rem'
+                fontSize: '0.7rem'
               }}
             >
               ✕
@@ -460,13 +465,13 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
           )}
 
           <kbd style={{
-            fontSize: '0.72rem',
-            fontWeight: 750,
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.18)',
-            borderRadius: 7,
-            padding: '4px 8px',
-            color: '#cbd5e1'
+            fontSize: '0.68rem',
+            fontWeight: 600,
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: 5,
+            padding: '2px 6px',
+            color: '#94a3b8'
           }}>
             ESC
           </kbd>
@@ -476,10 +481,10 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '10px 22px',
-          background: 'rgba(8, 13, 24, 0.65)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          gap: 6,
+          padding: '8px 16px',
+          background: '#0b1120',
+          borderBottom: '1px solid #1e293b',
           overflowX: 'auto',
           scrollbarWidth: 'none'
         }}>
@@ -494,25 +499,25 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '5px 12px',
-                  borderRadius: 999,
-                  border: `1px solid ${isActive ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.08)'}`,
-                  background: isActive ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'rgba(255, 255, 255, 0.03)',
-                  color: isActive ? '#ffffff' : '#94a3b8',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
+                  gap: 5,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${isActive ? '#3b82f6' : '#1e293b'}`,
+                  background: isActive ? '#1e3a8a' : '#111827',
+                  color: isActive ? '#f8fafc' : '#94a3b8',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
+                  transition: 'all 0.1s ease',
                   whiteSpace: 'nowrap'
                 }}
               >
                 <span>{cat}</span>
                 <span style={{
-                  fontSize: '0.66rem',
-                  padding: '1px 5px',
-                  borderRadius: 999,
-                  background: isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                  fontSize: '0.65rem',
+                  padding: '1px 4px',
+                  borderRadius: 4,
+                  background: isActive ? '#1d4ed8' : '#1e293b',
                   color: isActive ? '#ffffff' : '#64748b'
                 }}>
                   {count}
@@ -522,21 +527,54 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
           })}
         </div>
 
+        {/* Dataset Meta Banner */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '7px 18px',
+          background: '#090e1a',
+          borderBottom: '1px solid #1e293b',
+          fontSize: '0.72rem',
+          color: '#64748b'
+        }}>
+          <div>
+            {hasLoadedReport ? (
+              <span>Active Dataset: <strong style={{ color: '#93c5fd' }}>{ctx.activeFileName || 'Batch #1'}</strong> ({activeReport?.totalRecords} records)</span>
+            ) : (
+              <span>Dataset: <strong style={{ color: '#94a3b8' }}>None Loaded (0 records)</strong> — select a batch below</span>
+            )}
+          </div>
+          {hasLoadedReport && (
+            <div>
+              <span>Match Rate: <strong style={{ color: '#6ee7b7' }}>{activeReport?.matchRate.toFixed(1)}%</strong></span>
+              <span style={{ margin: '0 6px' }}>·</span>
+              <span>Exceptions: <strong style={{ color: (activeReport?.exceptions || 0) > 0 ? '#fca5a5' : '#6ee7b7' }}>{activeReport?.exceptions}</strong></span>
+            </div>
+          )}
+        </div>
+
         {/* Results List */}
         <div
           ref={listRef}
           style={{
-            maxHeight: '420px',
+            maxHeight: '380px',
             overflowY: 'auto',
-            padding: '10px 14px'
+            padding: '8px 10px'
           }}
         >
           {filtered.length === 0 ? (
-            <div style={{ padding: '48px 20px', textAlign: 'center', color: '#64748b' }}>
-              <div style={{ fontSize: '2.2rem', marginBottom: 10 }}>🔍</div>
-              <div style={{ fontSize: '1rem', color: '#f1f5f9', fontWeight: 750 }}>No matching items found</div>
-              <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: 4 }}>
-                No records or actions match &ldquo;<span style={{ color: '#38bdf8' }}>{search}</span>&rdquo; in the <strong style={{ color: '#ffffff' }}>{activeCategory}</strong> category.
+            <div style={{ padding: '36px 20px', textAlign: 'center', color: '#64748b' }}>
+              <div style={{ fontSize: '1.4rem', marginBottom: 6 }}>📁</div>
+              <div style={{ fontSize: '0.88rem', color: '#cbd5e1', fontWeight: 600 }}>
+                {activeCategory === 'Live Records' || activeCategory === 'Exceptions'
+                  ? 'No live transaction records loaded yet'
+                  : 'No matching items found'}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 3 }}>
+                {activeCategory === 'Live Records' || activeCategory === 'Exceptions'
+                  ? 'Click any dataset under "Batches" to load and reconcile real records.'
+                  : `No results match "${search}"`}
               </div>
             </div>
           ) : (
@@ -552,29 +590,24 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: 16,
-                    padding: '12px 16px',
-                    borderRadius: '12px',
+                    gap: 12,
+                    padding: '9px 12px',
+                    borderRadius: 8,
                     cursor: 'pointer',
-                    background: isSelected
-                      ? 'linear-gradient(90deg, rgba(37, 99, 235, 0.28) 0%, rgba(99, 102, 241, 0.16) 100%)'
-                      : 'transparent',
-                    border: `1px solid ${isSelected ? 'rgba(56, 189, 248, 0.45)' : 'transparent'}`,
-                    borderLeft: isSelected ? '3px solid #38bdf8' : '3px solid transparent',
-                    boxShadow: isSelected ? '0 4px 20px rgba(37, 99, 235, 0.25)' : 'none',
-                    transition: 'all 0.1s ease',
-                    marginBottom: 3
+                    background: isSelected ? '#1e293b' : 'transparent',
+                    borderLeft: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
+                    transition: 'background 0.08s ease',
+                    marginBottom: 2
                   }}
                 >
-                  {/* Left: Icon & Titles */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
+                  {/* Left: Icon & Text */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                     <span style={{
-                      fontSize: '1.25rem',
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
-                      background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                      border: `1px solid ${isSelected ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                      fontSize: '1rem',
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      background: '#1e293b',
                       display: 'grid',
                       placeItems: 'center',
                       flexShrink: 0
@@ -584,9 +617,9 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
                     <div style={{ minWidth: 0 }}>
                       <div style={{
-                        fontSize: '0.92rem',
-                        fontWeight: 750,
-                        color: isSelected ? '#ffffff' : '#f8fafc',
+                        fontSize: '0.86rem',
+                        fontWeight: 600,
+                        color: isSelected ? '#ffffff' : '#e2e8f0',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
@@ -594,26 +627,26 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                         {item.title}
                       </div>
                       <div style={{
-                        fontSize: '0.76rem',
-                        color: isSelected ? '#bae6fd' : '#94a3b8',
+                        fontSize: '0.72rem',
+                        color: isSelected ? '#cbd5e1' : '#64748b',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        marginTop: 2
+                        marginTop: 1
                       }}>
                         {item.subtitle}
                       </div>
                     </div>
                   </div>
 
-                  {/* Right: Amount & Status Badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                  {/* Right: Amount & Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                     {item.amount && (
                       <span style={{
-                        fontSize: '0.9rem',
-                        fontWeight: 800,
-                        color: '#ffffff',
-                        fontFamily: 'JetBrains Mono, monospace'
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        color: '#f8fafc',
+                        fontFamily: 'monospace'
                       }}>
                         {item.amount}
                       </span>
@@ -621,42 +654,27 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
                     {item.badge && (
                       <span style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        padding: '3px 10px',
-                        borderRadius: 8,
-                        background: item.badgeBg || 'rgba(56, 189, 248, 0.18)',
-                        color: item.badgeColor || '#38bdf8',
-                        border: `1px solid ${item.badgeColor || '#38bdf8'}40`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: item.badgeBg || '#1e293b',
+                        color: item.badgeColor || '#94a3b8'
                       }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: item.badgeColor || '#38bdf8' }} />
                         {item.badge}
                       </span>
                     )}
 
-                    {isSelected ? (
-                      <span style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        color: '#38bdf8',
-                        background: 'rgba(56, 189, 248, 0.12)',
-                        padding: '2px 7px',
-                        borderRadius: 5
-                      }}>
-                        ↵
-                      </span>
-                    ) : (
+                    {isSelected && (
                       <span style={{
                         fontSize: '0.68rem',
-                        fontWeight: 700,
-                        color: '#64748b',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
+                        fontWeight: 600,
+                        color: '#94a3b8',
+                        background: '#0f172a',
+                        padding: '2px 5px',
+                        borderRadius: 4
                       }}>
-                        {item.category}
+                        ↵
                       </span>
                     )}
                   </div>
@@ -671,21 +689,20 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 24px',
-          background: 'rgba(6, 10, 20, 0.95)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          fontSize: '0.74rem',
+          padding: '10px 18px',
+          background: '#090e1a',
+          borderTop: '1px solid #1e293b',
+          fontSize: '0.7rem',
           color: '#64748b'
         }}>
-          <div style={{ display: 'flex', gap: 18 }}>
-            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>↑↓</kbd> Navigate</span>
-            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>↵</kbd> Select</span>
-            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>Tab</kbd> Filter Category</span>
-            <span><kbd style={{ color: '#f1f5f9', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>ESC</kbd> Close</span>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <span><kbd style={{ color: '#94a3b8', background: '#1e293b', padding: '1px 5px', borderRadius: 3, marginRight: 3 }}>↑↓</kbd> Navigate</span>
+            <span><kbd style={{ color: '#94a3b8', background: '#1e293b', padding: '1px 5px', borderRadius: 3, marginRight: 3 }}>↵</kbd> Select</span>
+            <span><kbd style={{ color: '#94a3b8', background: '#1e293b', padding: '1px 5px', borderRadius: 3, marginRight: 3 }}>Tab</kbd> Filter</span>
+            <span><kbd style={{ color: '#94a3b8', background: '#1e293b', padding: '1px 5px', borderRadius: 3, marginRight: 3 }}>ESC</kbd> Close</span>
           </div>
 
-          <span style={{ color: '#38bdf8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8' }} />
+          <span style={{ color: '#64748b' }}>
             RiskShield Command Intelligence
           </span>
         </div>
