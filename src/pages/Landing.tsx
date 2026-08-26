@@ -11,7 +11,7 @@ import '../landing.css'
 
 export default function Landing() {
   return (
-    <div className="page">
+    <div className="lp">
       <Navbar />
       <main>
         <Hero />

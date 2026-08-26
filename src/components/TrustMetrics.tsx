@@ -1,55 +1,76 @@
-const metrics = [
-  {
-    num: '98.4%',
-    title: 'Automated Match Rate',
-    body: 'Deterministic 3-pass matching resolves exact pairs, fee variances, and partial short-pays without human touch.',
-    color: '#60a5fa'
-  },
-  {
-    num: '2.8 ms',
-    title: 'Engine Run Latency',
-    body: 'Processes 500+ heterogeneous records across 3 independent financial sources with sub-3ms algorithmic speed.',
-    color: '#34d399'
-  },
-  {
-    num: '₹0 Penalty',
-    title: 'Section 270A Defense',
-    body: 'CBDT Section 148 scrutiny, Form 15CB DTAA, and GST DRC-01 covered with CA DSC Class-3 e-filing.',
-    color: '#a78bfa'
-  },
-  {
-    num: 'T+1…T+7',
-    title: 'Forward Cash Realization',
-    body: 'Spline liquidity trajectory with daily settlement schedules and DSO payment lag stress-testing slider.',
-    color: '#fbbf24'
-  },
+import { useEffect, useRef, useState } from 'react'
+
+const METRICS = [
+  { value: 98.4, suffix: '%', label: '3-Way Match Rate', color: '#16a34a' },
+  { value: 2.8, suffix: 'ms', label: 'Engine Latency', color: '#2563eb' },
+  { value: 0, prefix: '₹', suffix: '', label: 'Sec 270A Penalty', color: '#6366f1', display: '₹0' },
+  { value: 7, prefix: 'T+', suffix: ' Days', label: 'Liquidity Forecast', color: '#d97706' },
 ]
+
+function AnimatedNumber({ value, prefix = '', suffix = '', display, color }: {
+  value: number; prefix?: string; suffix?: string; display?: string; color: string
+}) {
+  const [current, setCurrent] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+  const animated = useRef(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !animated.current) {
+          animated.current = true
+          const start = performance.now()
+          const duration = 1200
+
+          const tick = (now: number) => {
+            const progress = Math.min((now - start) / duration, 1)
+            const eased = 1 - Math.pow(1 - progress, 3)
+            setCurrent(eased * value)
+            if (progress < 1) requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+          observer.unobserve(el)
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [value])
+
+  const formatted = display && current >= value
+    ? display
+    : `${prefix}${value >= 10 ? Math.round(current) : current.toFixed(1)}${suffix}`
+
+  return (
+    <div ref={ref} className="lp-trust-value" style={{ color }}>
+      {formatted}
+    </div>
+  )
+}
 
 export default function TrustMetrics() {
   return (
-    <section id="metrics" className="trust" style={{ background: '#090d16', padding: '56px 0', borderTop: '1px solid rgba(148, 163, 184, 0.08)', borderBottom: '1px solid rgba(148, 163, 184, 0.08)' }}>
-      <div className="wrap" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
-        {metrics.map((item) => (
-          <div
-            key={item.title}
-            style={{
-              background: 'rgba(15, 23, 42, 0.6)',
-              border: '1px solid rgba(148, 163, 184, 0.1)',
-              borderRadius: 14,
-              padding: '22px',
-            }}
-          >
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: item.color, letterSpacing: '-0.02em' }}>
-              {item.num}
+    <section className="lp-trust">
+      <div className="lp-wrap">
+        <div className="lp-trust-grid">
+          {METRICS.map(m => (
+            <div key={m.label} className="lp-trust-item">
+              <AnimatedNumber
+                value={m.value}
+                prefix={(m as any).prefix}
+                suffix={m.suffix}
+                display={(m as any).display}
+                color={m.color}
+              />
+              <div className="lp-trust-label">{m.label}</div>
             </div>
-            <div style={{ color: '#ffffff', fontWeight: 750, margin: '4px 0', fontSize: '0.96rem' }}>
-              {item.title}
-            </div>
-            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
-              {item.body}
-            </p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   )

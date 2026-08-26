@@ -1,101 +1,119 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 export default function Hero() {
+  const heroRef = useRef<HTMLElement>(null)
+  const [mouse, setMouse] = useState({ x: 0, y: 0 })
+  const rafRef = useRef(0)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => { setTimeout(() => setLoaded(true), 100) }, [])
+
+  const handleMove = useCallback((e: MouseEvent) => {
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => {
+      const rect = heroRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMouse({
+        x: (e.clientX - rect.left) / rect.width - 0.5,
+        y: (e.clientY - rect.top) / rect.height - 0.5,
+      })
+    })
+  }, [])
+
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return
+    el.addEventListener('mousemove', handleMove)
+    return () => {
+      el.removeEventListener('mousemove', handleMove)
+      cancelAnimationFrame(rafRef.current)
+    }
+  }, [handleMove])
+
+  const px = (factor: number) => ({
+    transform: `translate3d(${mouse.x * factor}px, ${mouse.y * factor}px, 0)`,
+  })
+
   return (
-    <section className="hero" id="top" style={{ paddingTop: 36, paddingBottom: 56 }}>
-      <div className="wrap hero-split">
-        <div>
-          <span className="soft-badge">
-            <span className="badge-dot" />
-            AUTONOMOUS 3-WAY FINANCIAL RECONCILIATION
-          </span>
-          <h1 style={{ marginBottom: 16 }}>
-            Audit, match, and forecast <span style={{ color: '#60a5fa' }}>cash across 3 sources in seconds</span>
-          </h1>
-          <p className="lead" style={{ marginBottom: 28 }}>
-            RiskShield ingests Bank Statements, ERP General Ledgers, and GST e-Invoices.
-            Execute deterministic 3-pass matching, isolate anomalies with 6-D vector ML, forecast 7-day liquidity,
-            and defend corporate balance sheets with Section 148 statutory automation.
-          </p>
+    <section className="lp-hero" id="top" ref={heroRef}>
+      {/* Animated Gradient Mesh */}
+      <div className="lp-hero-mesh">
+        <div className="lp-hero-orb lp-hero-orb-1" />
+        <div className="lp-hero-orb lp-hero-orb-2" />
+        <div className="lp-hero-orb lp-hero-orb-3" />
+      </div>
+      <div className="lp-hero-grid" />
 
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 32 }}>
-            <a className="btn btn-primary" href="#/reconciliation">
-              ⚡ Open Reconciliation Engine
-            </a>
-            <a className="btn btn-secondary" href="#workflow">
-              📜 Explore Workflow Engine
-            </a>
-            <a className="btn btn-secondary" href="#demo">
-              ▶ Live Terminal
-            </a>
+      <div className="lp-hero-content">
+        {/* Left: Copy */}
+        <div className="lp-hero-text" style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'none' : 'translateY(30px)', transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+          <div className="lp-badge lp-badge-dark" style={{ marginBottom: 20 }}>
+            <span className="lp-badge-dot" />
+            AUTONOMOUS FINANCE OS
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: '0.8rem', color: '#94a3b8', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#93c5fd' }}>
-              ✓ 3-Pass Rule Engine
-            </span>
-            <span>·</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#a5b4fc' }}>
-              ✓ Isolation Forest ML
-            </span>
-            <span>·</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#86efac' }}>
-              ✓ DIN Notice Defense &amp; DSC Class-3
-            </span>
+          <h1>
+            Reconcile, detect, and forecast{' '}
+            <span>across 3 sources in seconds</span>
+          </h1>
+          <p className="lp-hero-desc">
+            RiskShield ingests Bank Statements, ERP General Ledgers, and GST e-Invoices.
+            Execute 3-pass matching, isolate anomalies with 6-D ML, forecast liquidity,
+            and defend balance sheets with statutory automation.
+          </p>
+          <div className="lp-hero-ctas">
+            <a className="lp-btn lp-btn-primary" href="#/reconciliation">⚡ Open Reconciliation Engine</a>
+            <a className="lp-btn lp-btn-outline-light" href="#how-it-works">Explore Workflow</a>
+          </div>
+          <div className="lp-hero-trust">
+            <span className="lp-hero-trust-item"><span className="lp-hero-trust-check">✓</span> 3-Pass Rule Engine</span>
+            <span style={{ color: '#475569' }}>·</span>
+            <span className="lp-hero-trust-item"><span className="lp-hero-trust-check">✓</span> Isolation Forest ML</span>
+            <span style={{ color: '#475569' }}>·</span>
+            <span className="lp-hero-trust-item"><span className="lp-hero-trust-check">✓</span> DSC Class-3 Signing</span>
           </div>
         </div>
 
-        {/* Live Controller Preview Card */}
-        <div className="preview-card">
-          <div className="preview-header">
-            <div className="preview-title">
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-              Live Audit Engine · Batch #1 (Enterprise Q1)
-            </div>
-            <div className="preview-dots">
-              <span className="preview-dot" style={{ background: '#ef4444' }} />
-              <span className="preview-dot" style={{ background: '#f59e0b' }} />
-              <span className="preview-dot" style={{ background: '#10b981' }} />
-            </div>
-          </div>
+        {/* Right: Parallax Preview Card */}
+        <div className="lp-hero-visual" style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'none' : 'translateY(40px)', transition: 'all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s' }}>
+          <div className="lp-parallax-layer" style={px(20)}>
+            <div className="lp-preview-card">
+              <div className="lp-preview-header">
+                <div className="lp-preview-title">
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                  Live Audit Engine · Batch #1
+                </div>
+                <div className="lp-preview-dots">
+                  <span className="lp-preview-dot" style={{ background: '#ef4444' }} />
+                  <span className="lp-preview-dot" style={{ background: '#f59e0b' }} />
+                  <span className="lp-preview-dot" style={{ background: '#10b981' }} />
+                </div>
+              </div>
 
-          <div className="preview-kpis">
-            <div className="preview-kpi">
-              <div className="preview-kpi-lbl">Cleared Value</div>
-              <div className="preview-kpi-val" style={{ color: '#10b981' }}>₹1.48 Cr</div>
-              <span style={{ fontSize: '0.7rem', color: '#86efac' }}>✓ 100% Reconciled</span>
-            </div>
+              <div className="lp-preview-kpis">
+                <div className="lp-preview-kpi">
+                  <div className="lp-preview-kpi-label">Cleared Value</div>
+                  <div className="lp-preview-kpi-value" style={{ color: '#10b981' }}>₹1.48 Cr</div>
+                </div>
+                <div className="lp-preview-kpi">
+                  <div className="lp-preview-kpi-label">Penalty Shield</div>
+                  <div className="lp-preview-kpi-value" style={{ color: '#818cf8' }}>₹3.42 L</div>
+                </div>
+                <div className="lp-preview-kpi">
+                  <div className="lp-preview-kpi-label">Engine Runtime</div>
+                  <div className="lp-preview-kpi-value" style={{ color: '#38bdf8' }}>2.8 ms</div>
+                </div>
+                <div className="lp-preview-kpi">
+                  <div className="lp-preview-kpi-label">Capital Runway</div>
+                  <div className="lp-preview-kpi-value" style={{ color: '#f59e0b' }}>42 Days</div>
+                </div>
+              </div>
 
-            <div className="preview-kpi">
-              <div className="preview-kpi-lbl">Sec 270A Penalty Shield</div>
-              <div className="preview-kpi-val" style={{ color: '#818cf8' }}>₹3.42 L</div>
-              <span style={{ fontSize: '0.7rem', color: '#c7d2fe' }}>DSC Class-3 Signed</span>
+              <div className="lp-preview-telemetry">
+                <div style={{ color: '#4ade80' }}>[PASS 1] 432 / 500 exact match (0.00 delta)</div>
+                <div style={{ color: '#38bdf8' }}>[PASS 2] 46 fuzzy reconciled ±1.5% MDR</div>
+                <div style={{ color: '#f87171' }}>[SOLVE] 39 exceptions auto-settled via GL 6140</div>
+              </div>
             </div>
-
-            <div className="preview-kpi">
-              <div className="preview-kpi-lbl">Engine Runtime</div>
-              <div className="preview-kpi-val" style={{ color: '#38bdf8' }}>2.8 ms</div>
-              <span style={{ fontSize: '0.7rem', color: '#bae6fd' }}>500 Recs / Batch</span>
-            </div>
-
-            <div className="preview-kpi">
-              <div className="preview-kpi-lbl">Working Capital Runway</div>
-              <div className="preview-kpi-val" style={{ color: '#f59e0b' }}>42 Days</div>
-              <span style={{ fontSize: '0.7rem', color: '#fde68a' }}>T+1 … T+7 Forecast</span>
-            </div>
-          </div>
-
-          {/* Mini 3-Pass Telemetry Row */}
-          <div style={{
-            background: 'rgba(11, 15, 25, 0.8)',
-            border: '1px solid rgba(148, 163, 184, 0.12)',
-            borderRadius: 10,
-            padding: '12px 14px',
-            fontFamily: 'monospace',
-            fontSize: '0.74rem',
-            lineHeight: 1.6
-          }}>
-            <div style={{ color: '#4ade80' }}>[PASS 1 EXACT] 432 / 500 records matched with hash ref (0.00 delta)</div>
-            <div style={{ color: '#38bdf8' }}>[PASS 2 FUZZY] 46 records reconciled within ±1.5% MDR fee tolerance</div>
-            <div style={{ color: '#f87171' }}>[AUTONOMOUS SOLVE] 39 exceptions settled via Gateway Fee GL 6140</div>
           </div>
         </div>
       </div>

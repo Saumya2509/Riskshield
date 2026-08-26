@@ -1,60 +1,97 @@
+import { useEffect, useRef } from 'react'
+
+const FEATURES = [
+  {
+    icon: '⚡',
+    iconClass: 'lp-bento-icon-blue',
+    title: '3-Pass Multi-Source Reconciliation',
+    desc: 'Deterministic exact, fuzzy (±1% MDR), and partial short-pay matching across Bank, Ledger, and Invoice feeds in under 3ms.',
+    stats: ['86.4% Pass 1', '9.2% Pass 2', '2.8ms Runtime'],
+    span: true,
+  },
+  {
+    icon: '🔮',
+    iconClass: 'lp-bento-icon-indigo',
+    title: 'Isolation Forest ML',
+    desc: '6-dimensional unsupervised anomaly detection with 98.7% AUC-ROC precision and automatic false-positive suppression.',
+    stats: ['6-D Vectors', '98.7% Precision'],
+  },
+  {
+    icon: '🛡️',
+    iconClass: 'lp-bento-icon-red',
+    title: '1-Click Exception Workbench',
+    desc: 'Auto-classify and batch-resolve exceptions with GAAP/IFRS compliant fixes — debit memos, suspense clearing, duplicate voiding.',
+    stats: ['7 GAAP Codes', '1-Click Resolve'],
+  },
+  {
+    icon: '🏛️',
+    iconClass: 'lp-bento-icon-amber',
+    title: 'Statutory Tax Defense',
+    desc: 'Mitigate Section 270A 200% penalties with Section 144B e-filing, Form 26A certificates, and CA DSC Class-3 digital signing.',
+    stats: ['CBDT 115BAA', 'DIN Verified'],
+  },
+  {
+    icon: '📈',
+    iconClass: 'lp-bento-icon-cyan',
+    title: 'Forward Cash Forecaster',
+    desc: 'T+1 to T+7 daily liquidity trajectories with epistemic confidence bounds and interactive DSO lag stress-testing.',
+    stats: ['T+7 Horizon', '95% Confidence'],
+    span: true,
+  },
+]
+
 export default function Features() {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const items = container.querySelectorAll('.reveal-item')
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement
+            const idx = Array.from(items).indexOf(el)
+            el.style.transitionDelay = `${idx * 100}ms`
+            el.classList.add('revealed')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    )
+
+    items.forEach((item) => observer.observe(item))
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <section className="section" id="features" style={{ background: '#0b0f19' }}>
-      <div className="wrap">
-        <div className="section-head">
-          <div>
-            <span className="soft-badge">
-              <span className="badge-dot" />
-              CORE CAPABILITIES
-            </span>
-            <h2>Built For Modern Finance Controllers &amp; CFOs</h2>
+    <section id="features" className="lp-section lp-section-light" style={{ background: '#fff' }}>
+      <div className="lp-wrap">
+        <div className="lp-section-head">
+          <div className="lp-badge lp-badge-blue">
+            <span className="lp-badge-dot" />
+            PLATFORM CAPABILITIES
           </div>
-          <p className="lead">
-            Every capability required to automate month-end books close, isolate balance sheet anomalies, and protect cash flow with full audit compliance.
-          </p>
+          <h2>Everything You Need to Control Finance</h2>
+          <p>From ingestion to statutory defense — a unified platform replacing spreadsheets, manual matching, and compliance gaps.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: 16, padding: '24px' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa', marginBottom: 16, fontSize: '1.2rem' }}>
-              🔄
+        <div className="lp-bento" ref={containerRef}>
+          {FEATURES.map(f => (
+            <div key={f.title} className={`lp-card lp-bento-item reveal-item ${f.span ? 'span-2' : ''}`}>
+              <div className={`lp-bento-icon ${f.iconClass}`}>{f.icon}</div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+              <div className="lp-bento-mini">
+                {f.stats.map(s => (
+                  <span key={s} className="lp-bento-stat">{s}</span>
+                ))}
+              </div>
             </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 750, color: '#ffffff', marginBottom: 8 }}>3-Pass Multi-Source Reconciliation</h3>
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
-              Ingests Bank Statements, ERP General Ledgers, and GST e-Invoices. Deterministic exact, fuzzy tolerance (±1%), and partial matching across 500+ records in &lt;2.8ms.
-            </p>
-          </div>
-
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: 16, padding: '24px' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8', marginBottom: 16, fontSize: '1.2rem' }}>
-              ⚡
-            </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 750, color: '#ffffff', marginBottom: 8 }}>1-Click Exception Workbench</h3>
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
-              Auto-categorizes variances into 7 GAAP exception codes. 1-click bulk solver posts debit memos, assigns suspense clearing GL 2190, and exports styled Dark Navy Excel (.xls) sheets.
-            </p>
-          </div>
-
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: 16, padding: '24px' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24', marginBottom: 16, fontSize: '1.2rem' }}>
-              📈
-            </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 750, color: '#ffffff', marginBottom: 8 }}>Forward Cash Forecaster (T+1…T+7)</h3>
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
-              Spline liquidity projection with daily settlement schedules, Inflow vs Outflow Donut visualization, and dynamic DSO payment lag stress-testing slider.
-            </p>
-          </div>
-
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: 16, padding: '24px' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', marginBottom: 16, fontSize: '1.2rem' }}>
-              🏛️
-            </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 750, color: '#ffffff', marginBottom: 8 }}>Statutory Tax & Notice Defense</h3>
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
-              Simulates Section 115BAA vs Old Regimes, files Section 144B e-responses for CBDT Section 148 notices, and mitigates Section 270A 200% misreporting penalties with CA DSC Class-3 signing.
-            </p>
-          </div>
+          ))}
         </div>
       </div>
     </section>

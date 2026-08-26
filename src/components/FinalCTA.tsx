@@ -1,24 +1,19 @@
+import { useScrollReveal } from '../hooks/useScrollReveal'
+
 export default function FinalCTA() {
+  const sectionRef = useScrollReveal<HTMLElement>(0.15)
+
   return (
-    <section className="section" style={{ background: '#080c14', textAlign: 'center', padding: '88px 0', borderTop: '1px solid rgba(148, 163, 184, 0.08)' }}>
-      <div className="wrap" style={{ maxWidth: 760 }}>
-        <span className="soft-badge" style={{ margin: '0 auto 16px' }}>
-          <span className="badge-dot" />
-          ENTERPRISE CONTROLLER OS
-        </span>
-        <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', marginBottom: 14 }}>
-          Run The Books &amp; Protect Cash Flow
-        </h2>
-        <p className="lead" style={{ margin: '0 auto 28px' }}>
-          Experience deterministic 3-way automated matching, 6-D vector ML anomaly scoring, statutory notice defense, and forward cash forecasting in action.
-        </p>
-        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a className="btn btn-primary" href="#/reconciliation" style={{ padding: '12px 26px' }}>
-            ⚡ Launch Reconciliation Engine ➔
-          </a>
-          <a className="btn btn-secondary" href="#/dashboard" style={{ padding: '12px 26px' }}>
-            📊 Open Executive Dashboard
-          </a>
+    <section className="lp-cta reveal" ref={sectionRef.ref}>
+      <div className="lp-cta-orb lp-cta-orb-1" />
+      <div className="lp-cta-orb lp-cta-orb-2" />
+
+      <div className="lp-wrap">
+        <h2>Ready to Automate Financial Reconciliation?</h2>
+        <p>Start matching Bank, Ledger, and Invoice records in under 3ms with enterprise-grade ML scoring and statutory compliance.</p>
+        <div className="lp-cta-actions">
+          <a href="#/reconciliation" className="lp-cta-btn-white">⚡ Open Reconciliation Engine</a>
+          <a href="#/dashboard" className="lp-btn lp-btn-outline-light" style={{ padding: '14px 28px', fontSize: '0.95rem' }}>Explore Dashboard ➔</a>
         </div>
       </div>
     </section>
