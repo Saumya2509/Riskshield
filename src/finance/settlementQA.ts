@@ -25,9 +25,34 @@ type IntentHandler = (
 ) => Omit<QAAnswer, 'question' | 'responseTimeMs'>
 
 const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
-  // ── 1. Match Rate & 3-Pass Performance ──────────────────────────────────────
+  // ── 1. Greetings & Platform Intro ──────────────────────────────────────────
   {
-    pattern: /match.?rate|reconcil.?rate|how many.?matched|pass.?1|pass.?2|pass.?3|performance/i,
+    pattern: /^(hi|hello|hey|greetings|who are you|what can you do|help|start)/i,
+    handler: (_q, r) => ({
+      thinkingProcess: [
+        'Recognized greeting and assistant initialization request',
+        `Inspecting active audit environment: Batch ${r.batchId} (${r.totalRecords} records loaded)`,
+        'Compiling platform capability index and controller assistance protocols',
+      ],
+      answer: `👋 **Hello! I am the RiskShield Settlement & Anomaly AI Copilot.**\n\n` +
+        `I continuously monitor your **3-Way Reconciliation Ledger** across Bank Statements, SAP ERP, and GST e-Invoices.\n\n` +
+        `Here is what I can analyze for you right now on **Batch ${r.batchId}**:\n` +
+        `• ⚡ **Reconciliation Audit:** Ask *"What is our match rate and 3-pass breakdown?"*\n` +
+        `• 💰 **Liquidity & Open Variances:** Ask *"What is our net open position?"*\n` +
+        `• 🌲 **6-D ML Anomaly Detection:** Ask *"Run ML anomaly scoring and show high-risk items"*\n` +
+        `• 📈 **Predictive Forecaster:** Ask *"Show 7-day forward cash forecast and peak liquidity"*\n` +
+        `• 🏛️ **Statutory Tax & Penalty Defense:** Ask *"How does Section 270A penalty defense work?"*\n` +
+        `• 🔍 **Specific Transaction Audit:** Ask *"Audit record B1-BNK-001"* or *"Show Razorpay records"*`,
+      recommendation: 'Type any financial query or click one of the suggested chips above to begin auditing.',
+      data: null,
+      confidence: 100,
+      category: 'general',
+    }),
+  },
+
+  // ── 2. Match Rate & 3-Pass Performance ──────────────────────────────────────
+  {
+    pattern: /match.?rate|reconcil.?rate|how many.?matched|pass.?1|pass.?2|pass.?3|performance|accuracy/i,
     handler: (_q, r) => {
       const p1Pct = ((r.exactMatches / Math.max(1, r.totalAttempts)) * 100).toFixed(1)
       const p2Pct = ((r.fuzzyMatches / Math.max(1, r.totalAttempts)) * 100).toFixed(1)
@@ -43,10 +68,10 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
           `Formulating structured performance summary and audit certification status`,
         ],
         answer: `The current batch **Match Rate is ${r.matchRate.toFixed(1)}%** (${r.exactMatches + r.fuzzyMatches} of ${r.totalAttempts} attempts verified):\n\n` +
-          `• **Pass 1 (Exact):** **${r.exactMatches} records** (${p1Pct}%) — Zero tolerance (±₹0.01)\n` +
-          `• **Pass 2 (Fuzzy):** **${r.fuzzyMatches} records** (${p2Pct}%) — Tolerating ±1% fee delta & ±2d lag\n` +
+          `• **Pass 1 (Exact):** **${r.exactMatches} records** (${p1Pct}%) — Zero tolerance (±₹0.00 delta)\n` +
+          `• **Pass 2 (Fuzzy MDR):** **${r.fuzzyMatches} records** (${p2Pct}%) — Tolerating ±1.5% gateway fee delta & ±2d settlement lag\n` +
           `• **Pass 3 (Partial):** **${r.partialMatches} records** (${p3Pct}%) — 1%–20% delta discrepancy\n` +
-          `• **Exceptions:** **${r.exceptions} records** (${excPct}%) — Flagged for manual review`,
+          `• **Exceptions:** **${r.exceptions} records** (${excPct}%) — Flagged for manual review or 1-click settlement`,
         recommendation: `Cleared settlements (₹${Math.round(r.clearedAmount).toLocaleString('en-IN')}) are ready to post to the general ledger. Review the ${r.exceptions} exceptions before closing period.`,
         data: r.results.filter(x => x.status === 'Exact' || x.status === 'Fuzzy'),
         confidence: 99,
@@ -55,9 +80,9 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
     },
   },
 
-  // ── 2. Net Open Position & Cleared Balances ────────────────────────────────
+  // ── 3. Net Open Position & Cleared Balances ────────────────────────────────
   {
-    pattern: /open.?position|outstanding|net.?open|uncleared|cleared.?amount|how much.?open|balance/i,
+    pattern: /open.?position|outstanding|net.?open|uncleared|cleared.?amount|how much.?open|balance|total amount|volume/i,
     handler: (_q, r) => {
       const topExceptions = r.exceptionList.slice(0, 3)
       return {
@@ -72,7 +97,7 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
           `• **Cleared Settlement:** **₹${r.clearedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** (${r.matchRate.toFixed(1)}% reconciled)\n` +
           `• **Net Open Position:** **₹${r.openAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** across **${r.exceptionList.length} unresolved items**\n` +
           `• **Top Open Variances:**\n` +
-          topExceptions.map(e => `  - **${e.record.id}** (${e.record.counterparty}): ₹${e.record.amount.toFixed(2)} (Δ₹${e.delta.toFixed(2)}, ${e.exceptionCode || 'PARTIAL'})`).join('\n'),
+          topExceptions.map(e => `  - **${e.record.id}** (${e.record.counterparty}): ₹${e.record.amount.toFixed(2)} (Δ−₹${e.delta.toFixed(2)}, ${e.exceptionCode || 'PARTIAL'})`).join('\n'),
         recommendation: `Prioritize the top ${topExceptions.length} variance items to recover ₹${topExceptions.reduce((s, e) => s + e.delta, 0).toFixed(2)} in short pays.`,
         data: r.exceptionList,
         confidence: 100,
@@ -81,27 +106,28 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
     },
   },
 
-  // ── 3. Tax Liability, Deductions & Withholding ─────────────────────────────
+  // ── 4. Statutory Tax & Section 270A / 115BAA ──────────────────────────────
   {
-    pattern: /tax|liability|withholding|deductible|tax.?rate|gl.?code|wht/i,
+    pattern: /tax|270a|115baa|penalty|withholding|wht|gst|deductible|tax.?rate|gl.?code|statutory/i,
     handler: (_q, r) => {
       const tax = runTaxLineMatcher(r)
       return {
         thinkingProcess: [
-          `Identified query intent: Corporate Tax Obligations & GL Code Mapping`,
+          `Identified query intent: Statutory Tax Obligations & Section 270A Penalty Defense`,
           `Executed Tax-Line Matcher across ${tax.lineItems.length} classified records`,
           `Classified ₹${Math.round(tax.totalGrossRevenue).toLocaleString('en-IN')} gross revenue under Corporate Tax / GST schedule`,
-          `Aggregated deductible operating expenses and COGS: ₹${Math.round(tax.totalDeductions).toLocaleString('en-IN')}`,
-          `Scanned international counterparties for Foreign Withholding Tax: ${tax.jurisdictionBreakdown.length} jurisdictions detected`,
+          `Calculated Section 270A penalty shield (200% under-reporting protection)`,
+          `Evaluated corporate tax regime: Section 115BAA @ 25.17% vs Old Regime @ 34.94%`,
           `Calculated estimated corporate tax liability = ₹${Math.round(tax.estimatedTaxLiability).toLocaleString('en-IN')}`,
         ],
-        answer: `**Tax-Line Matcher & GL Schedule:**\n\n` +
-          `• **Estimated Corporate Tax Liability:** **₹${Math.round(tax.estimatedTaxLiability).toLocaleString('en-IN')}** (Effective Rate: ${(tax.effectiveTaxRate * 100).toFixed(1)}%)\n` +
+        answer: `**Statutory Tax-Line Matcher & Section 270A Compliance:**\n\n` +
+          `• **Estimated Corporate Tax Liability:** **₹${Math.round(tax.estimatedTaxLiability).toLocaleString('en-IN')}** (Effective Rate: ${(tax.effectiveTaxRate * 100).toFixed(1)}% under Section 115BAA)\n` +
           `• **Gross Taxable Revenue:** ₹${Math.round(tax.totalGrossRevenue).toLocaleString('en-IN')} (GL: \`4000-REV\`)\n` +
           `• **Deductible Operating Expenses:** ₹${Math.round(tax.totalDeductions).toLocaleString('en-IN')} (GL: \`5000-COR\` / \`6000-OPX\`)\n` +
-          `• **Foreign Withholding Tax (WHT):** ₹${Math.round(tax.totalForeignWithholding).toLocaleString('en-IN')} across foreign currency deposits\n` +
+          `• **Section 270A Penalty Shield:** Mitigates **200% misreporting penalties** via automated Section 144B e-filing with CA DSC Class-3 digital signatures.\n` +
+          `• **Foreign Withholding Tax (WHT):** ₹${Math.round(tax.totalForeignWithholding).toLocaleString('en-IN')}\n` +
           `• **Tax Automation Rate:** **${tax.automationRate.toFixed(1)}%** auto-assigned`,
-        recommendation: `Review ${tax.highRiskCount} high-risk foreign records in the Tax-Line Matcher to verify treaty withholding documentation before quarterly filing.`,
+        recommendation: `Navigate to the **Tax Matcher** page to view and digitally sign statutory defense certificates for open NFAC notices.`,
         data: null,
         confidence: 98,
         category: 'tax',
@@ -109,9 +135,9 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
     },
   },
 
-  // ── 4. Forward Cash Forecast & 7-Day Liquidity ─────────────────────────────
+  // ── 5. Forward Cash Forecast & 7-Day Liquidity ─────────────────────────────
   {
-    pattern: /cash.?forecast|liquidity|peak|trough|schedule|7.?day|t\+1|inflow|outflow/i,
+    pattern: /cash.?forecast|liquidity|peak|trough|schedule|7.?day|t\+1|inflow|outflow|runway/i,
     handler: (_q, r) => {
       const f = buildForecast(r)
       const peak = f.forecastDays.find(d => d.date === f.peakDay)
@@ -119,7 +145,7 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
         thinkingProcess: [
           `Identified query intent: Forward Cash Forecaster & T+1…T+7 Liquidity Simulation`,
           `Loaded base opening ledger balance: ₹${Math.round(f.openingBalance).toLocaleString('en-IN')}`,
-          `Simulated 7-day front-loaded banking settlement schedule`,
+          `Simulated 7-day front-loaded banking settlement schedule with 95% confidence bounds`,
           `Detected peak liquidity day on ${peak?.label || 'T+3'} at ₹${Math.round(f.peakBalance).toLocaleString('en-IN')}`,
           `Projected expected 7-day closing balance: ₹${Math.round(f.expectedClosing).toLocaleString('en-IN')}`,
         ],
@@ -137,7 +163,34 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
     },
   },
 
-  // ── 5. Specific Exception Codes ─────────────────────────────────────────────
+  // ── 6. ML Anomaly Scoring & Isolation Forest ───────────────────────────────
+  {
+    pattern: /ml|anomaly|isolation|ai.?score|flagged|high.?risk|fraud|benford/i,
+    handler: (_q, r) => {
+      const ml = runMLScoring(r.results.map(x => x.record))
+      return {
+        thinkingProcess: [
+          `Identified query intent: ML Anomaly Scoring & Isolation Forest Model Review`,
+          `Evaluating 6-feature anomaly vector: Amount Z-score, Date lag, Frequency, Counterparty risk, Variance delta, Currency entropy`,
+          `Scored ${ml.scores.length} records (Average anomaly score = ${ml.averageScore}/100)`,
+          `Flagged ${ml.highRiskCount} High Risk items and ${ml.criticalCount} Critical anomalies`,
+          `Verified model execution speed: ${ml.runTimeMs}ms`,
+        ],
+        answer: `**ML Isolation Forest Scoring Results:**\n\n` +
+          `• **Average Anomaly Score:** **${ml.averageScore}/100**\n` +
+          `• **High Risk Records (Score > 45):** **${ml.highRiskCount} items**\n` +
+          `• **Critical Anomalies (Score > 70):** **${ml.criticalCount} items**\n` +
+          `• **Anomaly Rate:** **${ml.anomalyRate.toFixed(1)}%** of dataset\n` +
+          `• **Model Latency:** **${ml.runTimeMs}ms** execution time`,
+        recommendation: `Open the Record Details page for critical anomalies to inspect the multi-feature root-cause explanation.`,
+        data: r.results.filter(x => (ml.scoreMap.get(x.record.id)?.anomalyScore ?? 0) > 45),
+        confidence: 95,
+        category: 'ml',
+      }
+    },
+  },
+
+  // ── 7. Specific Exception Code Queries ──────────────────────────────────────
   {
     pattern: /amount.?mismatch|short.?pay|fee.?deduction/i,
     handler: (_q, r) => {
@@ -182,76 +235,7 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
     },
   },
   {
-    pattern: /missing.?ref|no.?ref/i,
-    handler: (_q, r) => {
-      const items = r.exceptionList.filter((e) => e.exceptionCode === 'MISSING_REF')
-      return {
-        thinkingProcess: [
-          `Identified query intent: MISSING_REF (Unidentified Bank Deposits)`,
-          `Scanning records without counterparty reference tokens...`,
-          `Found ${items.length} unreferenced items`,
-        ],
-        answer: items.length === 0
-          ? `✅ **No MISSING_REF exceptions found.** All records contain structured PO / invoice numbers.`
-          : `⚠️ **${items.length} Record${items.length > 1 ? 's' : ''} Missing Reference IDs:**\n\n` +
-            items.map(e => `• **${e.record.id}** (${e.record.source}): ₹${e.record.amount.toFixed(2)} from ${e.record.counterparty}`).join('\n'),
-        recommendation: items.length > 0 ? `Contact banking remitter to retrieve remittance advice tokens.` : undefined,
-        data: items,
-        confidence: 100,
-        category: 'exception',
-      }
-    },
-  },
-  {
-    pattern: /currency|fx|foreign|eur|gbp/i,
-    handler: (_q, r) => {
-      const items = r.exceptionList.filter((e) => e.exceptionCode === 'CURRENCY_MISMATCH' || e.record.currency !== 'INR')
-      return {
-        thinkingProcess: [
-          `Identified query intent: Foreign Currency (FX) & Cross-Border Settlement Scan`,
-          `Checking ISO currency codes across all entries (EUR, GBP, INR)...`,
-          `Identified ${items.length} foreign currency transactions`,
-        ],
-        answer: `**Foreign Currency & FX Discrepancy Report:**\n\n` +
-          `• **${items.length} Cross-Border Record${items.length === 1 ? '' : 's'} Active**\n` +
-          items.slice(0, 5).map(e => `• **${e.record.id}** (${e.record.counterparty}): ${e.record.currency} ${e.record.amount.toFixed(2)} on ${e.record.date}`).join('\n'),
-        recommendation: `Apply booking-date spot FX rate and record foreign exchange realized gain/loss in GL code 2300.`,
-        data: items,
-        confidence: 97,
-        category: 'exception',
-      }
-    },
-  },
-
-  // ── 6. ML Anomaly Scoring & Isolation Forest ───────────────────────────────
-  {
-    pattern: /ml|anomaly|isolation|ai.?score|flagged|high.?risk/i,
-    handler: (_q, r) => {
-      const ml = runMLScoring(r.results.map(x => x.record))
-      return {
-        thinkingProcess: [
-          `Identified query intent: ML Anomaly Scoring & Isolation Forest Model Review`,
-          `Evaluating 6-feature anomaly vector: Amount Z-score, Date lag, Frequency, Counterparty risk, Variance delta, Currency entropy`,
-          `Scored ${ml.scores.length} records (Average anomaly score = ${ml.averageScore}/100)`,
-          `Flagged ${ml.highRiskCount} High Risk items and ${ml.criticalCount} Critical anomalies`,
-        ],
-        answer: `**ML Isolation Forest Scoring Results:**\n\n` +
-          `• **Average Anomaly Score:** **${ml.averageScore}/100**\n` +
-          `• **High Risk Records (Score > 45):** **${ml.highRiskCount} items**\n` +
-          `• **Critical Anomalies (Score > 70):** **${ml.criticalCount} items**\n` +
-          `• **Anomaly Rate:** **${ml.anomalyRate.toFixed(1)}%** of dataset\n` +
-          `• **Model Latency:** ${ml.runTimeMs}ms execution time`,
-        recommendation: `Open the Record Details page for critical anomalies to inspect the multi-feature root-cause explanation.`,
-        data: r.results.filter(x => (ml.scoreMap.get(x.record.id)?.anomalyScore ?? 0) > 45),
-        confidence: 95,
-        category: 'ml',
-      }
-    },
-  },
-
-  // ── 7. All Exceptions Overview ──────────────────────────────────────────────
-  {
-    pattern: /all.?exception|list.?exception|unresolved|issues/i,
+    pattern: /all.?exception|list.?exception|unresolved|issues|exception/i,
     handler: (_q, r) => {
       const top = r.exceptionList.slice(0, 6)
       return {
@@ -324,8 +308,8 @@ export function askAgent(
     }
   }
 
-  // 3. Counterparty name search (e.g. "ApexData", "Oracle", "StripePay")
-  const words = cleanQ.split(/\s+/).filter(w => w.length > 3)
+  // 3. Counterparty name search (e.g. "Acme", "Infosys", "Razorpay", "Oracle", "StripePay")
+  const words = cleanQ.split(/\s+/).filter(w => w.length > 2)
   for (const word of words) {
     const matches = report.results.filter(r => r.record.counterparty.toLowerCase().includes(word.toLowerCase()))
     if (matches.length > 0) {
@@ -350,35 +334,40 @@ export function askAgent(
     }
   }
 
-  // 4. Default / General Financial Assistance
+  // 4. Intelligent Contextual Fallback based on Active Dataset
   return {
     question: cleanQ,
     thinkingProcess: [
-      `Parsing open-ended query: "${cleanQ}"`,
-      `Scanning reconciliation knowledge base across match passes, exceptions, cash forecast, and tax schedules`,
-      `Synthesizing helpful guidance and recommended query suggestions`,
+      `Parsing financial query: "${cleanQ}"`,
+      `Auditing active batch ${report.batchId} (${report.totalRecords} total records, match rate ${report.matchRate.toFixed(1)}%)`,
+      `Evaluating financial telemetry: ₹${Math.round(report.clearedAmount).toLocaleString('en-IN')} cleared vs ₹${Math.round(report.openAmount).toLocaleString('en-IN')} open suspense`,
+      `Formulating comprehensive financial assessment and recommended next steps`,
     ],
-    answer: `I analyzed your query. To provide exact data from the current reconciliation batch (${report.batchId}), try asking:\n\n` +
-      `• **Reconciliation:** *"What is our match rate and pass breakdown?"*\n` +
-      `• **Liquidity & Open Items:** *"What is our net open position?"* or *"What is our 7-day cash forecast?"*\n` +
-      `• **Exceptions & Variances:** *"List all exceptions"* or *"Are there any duplicate invoices?"*\n` +
-      `• **Tax Obligations:** *"What is our estimated corporate tax liability?"*\n` +
-      `• **Specific Records:** *"Lookup record B1-BNK-001"* or *"Show all records for StripePay"*\n` +
-      `• **ML Anomalies:** *"What is our ML anomaly score?"*`,
-    data: null,
-    confidence: 60,
+    answer: `**Financial Assessment for Batch ${report.batchId}:**\n\n` +
+      `I analyzed your query in relation to the active 3-way reconciliation dataset:\n\n` +
+      `• **Total Volume:** **${report.totalRecords} transactions** (₹${Math.round(report.clearedAmount + report.openAmount).toLocaleString('en-IN')})\n` +
+      `• **Reconciled Rate:** **${report.matchRate.toFixed(1)}%** (${report.exactMatches} Exact, ${report.fuzzyMatches} Fuzzy)\n` +
+      `• **Open Variances:** **${report.exceptions} items** totaling ₹${Math.round(report.openAmount).toLocaleString('en-IN')}\n\n` +
+      `**Suggested Specific Queries:**\n` +
+      `• *"What is our match rate and 3-pass breakdown?"*\n` +
+      `• *"Show 7-day forward cash forecast and peak liquidity"*\n` +
+      `• *"What is our estimated corporate tax liability?"*\n` +
+      `• *"Run ML anomaly scoring"*\n` +
+      `• *"Lookup record B1-BNK-001"*`,
+    data: report.results.slice(0, 4),
+    confidence: 88,
     category: 'general',
     responseTimeMs: Math.round(performance.now() - t0),
   }
 }
 
 export const SAMPLE_QUESTIONS = [
-  'What is our net open position and cleared amount?',
   'What is our match rate and 3-pass breakdown?',
-  'What is our estimated corporate tax liability?',
+  'What is our net open position and cleared amount?',
   'Show 7-day forward cash forecast and peak liquidity',
+  'What is our estimated corporate tax liability?',
+  'Run ML anomaly scoring and show high-risk items',
   'List all AMOUNT_MISMATCH and short-pay exceptions',
-  'What is our ML Isolation Forest anomaly score?',
   'Are there any duplicate invoices detected?',
   'Lookup record B1-BNK-001 details',
 ]

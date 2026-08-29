@@ -95,7 +95,7 @@ export default function AIAssistantPage() {
     const startTime = Date.now()
     let stepIndex = 0
 
-    // Progressive thinking interval (advances thoughts sequentially)
+    // Progressive thinking interval (advances thoughts sequentially in ~0.5s)
     const thinkingTimer = setInterval(() => {
       stepIndex++
       if (stepIndex < thinkingSteps.length) {
@@ -105,7 +105,7 @@ export default function AIAssistantPage() {
         } : m))
       } else {
         clearInterval(thinkingTimer)
-        const durationSec = Math.max(1, Math.round((Date.now() - startTime) / 100) / 10)
+        const durationSec = Math.max(0.4, Math.round((Date.now() - startTime) / 100) / 10)
 
         // Switch from Thinking to Streaming Answer word-by-word
         const words = rawResult.answer.split(' ')
@@ -135,9 +135,9 @@ export default function AIAssistantPage() {
             } : m))
             setIsProcessing(false)
           }
-        }, 35)
+        }, 15)
       }
-    }, 450)
+    }, 140)
   }
 
   return (
