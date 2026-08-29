@@ -352,7 +352,7 @@ export default function ExceptionsPage() {
         <main className="d-main">
 
           {/* Header */}
-          <header className="d-pagehead">
+          <header className="d-pagehead" style={{ marginBottom: 16 }}>
             <div>
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 Exception Resolution Workbench
@@ -390,10 +390,22 @@ export default function ExceptionsPage() {
                 Interactive 1-click accounting solutions · GAAP/IFRS Dual-Entry Vouchers · Vendor Debit Memos · DSO Aging Analysis
               </p>
             </div>
-            <div className="d-page-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ textAlign: 'right', marginRight: 4 }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Unresolved Exposure</span>
-                <strong style={{ fontSize: '1.15rem', color: totalOpenAmount > 0 ? '#dc2626' : '#16a34a' }}>
+            <div className="d-page-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' }}>
+              {/* Exposure Pill */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                height: 36,
+                boxSizing: 'border-box',
+                whiteSpace: 'nowrap'
+              }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 650 }}>Exposure:</span>
+                <strong style={{ fontSize: '0.92rem', color: totalOpenAmount > 0 ? '#dc2626' : '#16a34a' }}>
                   ₹{Math.round(totalOpenAmount).toLocaleString('en-IN')}
                 </strong>
               </div>
@@ -408,20 +420,21 @@ export default function ExceptionsPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    height: 38,
-                    padding: '0 16px',
+                    height: 36,
+                    padding: '0 14px',
                     background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: 8,
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(124,58,237,0.3)'
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 6px rgba(124,58,237,0.25)'
                   }}
                   title="Auto-apply recommended accounting fixes (Debit notes, Suspense GL, Spot FX) across all exceptions"
                 >
-                  ⚡ AI Auto-Resolve All ({openCount})
+                  ⚡ Auto-Resolve ({openCount})
                 </button>
               )}
 
@@ -435,48 +448,62 @@ export default function ExceptionsPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    fontSize: '0.82rem',
-                    height: 38,
+                    fontSize: '0.8rem',
+                    height: 36,
+                    padding: '0 12px',
                     background: '#eff6ff',
                     color: '#1d4ed8',
                     borderColor: '#bfdbfe',
                     fontWeight: 700,
+                    whiteSpace: 'nowrap'
                   }}
                   title="Download complete Exceptions Audit Schedule in Styled Excel (.xls)"
                 >
-                  📊 Download Exceptions (.xls)
+                  📊 Export (.xls)
                 </button>
               )}
 
-              {/* SAVE BUTTON FOR FIXES */}
-              <button
-                type="button"
-                onClick={handleSaveToMultiSource}
-                disabled={resolvedCount === 0}
-                className="d-btn d-btn-primary"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  height: 38,
-                  background: resolvedCount > 0 ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' : '#94a3b8',
-                  borderColor: resolvedCount > 0 ? '#16a34a' : '#94a3b8',
-                  boxShadow: resolvedCount > 0 ? '0 2px 8px rgba(22,163,74,0.3)' : 'none',
-                  fontWeight: 700,
-                  cursor: resolvedCount > 0 ? 'pointer' : 'not-allowed',
-                }}
-              >
-                💾 Save Changes &amp; Reconcile Multi-Source
-              </button>
+              {/* SAVE BUTTON FOR FIXES (Only shown when fixes are applied) */}
+              {resolvedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSaveToMultiSource}
+                  className="d-btn d-btn-primary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    height: 36,
+                    padding: '0 14px',
+                    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                    borderColor: '#16a34a',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 6px rgba(22,163,74,0.25)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  💾 Save to Recon
+                </button>
+              )}
 
+              {/* RESET BUTTON */}
               {resolvedCount > 0 && (
                 <button
                   type="button"
                   onClick={() => ctx.resetFixes()}
                   className="d-btn d-btn-ghost"
-                  style={{ fontSize: '0.78rem', height: 38 }}
+                  style={{
+                    fontSize: '0.78rem',
+                    height: 36,
+                    padding: '0 10px',
+                    color: '#64748b',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="Reset all applied fixes"
                 >
-                  ↺ Reset Fixes
+                  ↺ Reset
                 </button>
               )}
             </div>
