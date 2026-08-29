@@ -173,6 +173,8 @@ export default function ExceptionsPage() {
     const unres = allExceptions.filter(e => !resolvedMap[e.record.id])
     if (unres.length === 0) return
 
+    const newFixes: Record<string, { method: string; note: string; timestamp: string }> = {}
+
     unres.forEach(item => {
       let method = 'Reconciled & Cleared'
       let note = 'Reconciled with 3-way ERP match.'
@@ -201,14 +203,15 @@ export default function ExceptionsPage() {
         note = `Issued accrual reversal voucher #AR-2026 for uncollected ledger record.`
       }
 
-      ctx.applyFix(item.record.id, {
+      newFixes[item.record.id] = {
         method,
         note: `${method}: ${note}`,
         timestamp: new Date().toLocaleTimeString(),
-      })
+      }
     })
 
-    ctx.saveFixesToMultiSource()
+    ctx.applyBatchFixes(newFixes)
+    ctx.saveFixesToMultiSource(newFixes)
     setSaveSuccessMsg(`⚡ AI Auto-Resolved All ${unres.length} Exceptions! Match Rate updated to 100.0%.`)
     setTimeout(() => setSaveSuccessMsg(null), 7000)
   }

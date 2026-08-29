@@ -37,10 +37,11 @@ interface FinanceContextType {
   setRecordCount: (count: number) => void
   resetReconciliation: () => void
   applyFix: (recordId: string, fix: ResolutionFix) => void
+  applyBatchFixes: (fixes: Record<string, ResolutionFix>) => void
   resetFixes: () => void
   defendNotice: (recordId: string, info: DefendedNotice) => void
   resetDefendedNotices: () => void
-  saveFixesToMultiSource: () => ReconciliationReport | null
+  saveFixesToMultiSource: (overrideFixes?: Record<string, ResolutionFix>) => ReconciliationReport | null
 }
 
 function loadSession<T>(key: string, fallback: T): T {
@@ -111,6 +112,7 @@ const FinanceContext = createContext<FinanceContextType>({
   setRecordCount: () => {},
   resetReconciliation: () => {},
   applyFix: () => {},
+  applyBatchFixes: () => {},
   resetFixes: () => {},
   defendNotice: () => {},
   resetDefendedNotices: () => {},
@@ -182,6 +184,11 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
   }, [lastRunAt])
 
   function setReport(r: ReconciliationReport) {
+    // If switching to a different batch, reset resolved map so old batch fixes don't linger
+    if (report && report.batchId !== r.batchId) {
+      setResolvedMap({})
+      saveSession('resolved_map', {})
+    }
     setReportState(r)
     const now = new Date()
     setLastRunAt(now)
@@ -207,6 +214,14 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
   function applyFix(recordId: string, fix: ResolutionFix) {
     setResolvedMap(prev => {
       const next = { ...prev, [recordId]: fix }
+      saveSession('resolved_map', next)
+      return next
+    })
+  }
+
+  function applyBatchFixes(newFixes: Record<string, ResolutionFix>) {
+    setResolvedMap(prev => {
+      const next = { ...prev, ...newFixes }
       saveSession('resolved_map', next)
       return next
     })
@@ -242,13 +257,15 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
     sessionStorage.clear()
   }
 
-  function saveFixesToMultiSource(): ReconciliationReport | null {
+  function saveFixesToMultiSource(overrideFixes?: Record<string, ResolutionFix>): ReconciliationReport | null {
     const base = report || runReconciliation()
     if (!base) return null
 
-    // Update each record according to resolvedMap
+    const effectiveFixes = overrideFixes ? { ...resolvedMap, ...overrideFixes } : resolvedMap
+
+    // Update each record according to effectiveFixes
     const updatedResults: MatchResult[] = base.results.map((r: MatchResult) => {
-      const fix = resolvedMap[r.record.id]
+      const fix = effectiveFixes[r.record.id]
       if (!fix) return r
 
       return {
@@ -304,7 +321,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
     <FinanceContext.Provider value={{
       report, mlResult, lastRunAt, activeFileName, recordCount, resolvedMap, defendedNotices,
       setReport, setMLResult, setActiveFileName, setRecordCount, resetReconciliation,
-      applyFix, resetFixes, defendNotice, resetDefendedNotices, saveFixesToMultiSource
+      applyFix, applyBatchFixes, resetFixes, defendNotice, resetDefendedNotices, saveFixesToMultiSource
     }}>
       {children}
     </FinanceContext.Provider>
