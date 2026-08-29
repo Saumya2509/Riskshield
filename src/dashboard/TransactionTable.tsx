@@ -26,8 +26,9 @@ export default function TransactionTable() {
   const financeRows = showFinance && report
     ? [...report.results]
         .sort((a, b) => {
-          const sa = mlResult?.scoreMap.get(a.record.id)?.anomalyScore ?? 0
-          const sb = mlResult?.scoreMap.get(b.record.id)?.anomalyScore ?? 0
+          const map = mlResult?.scoreMap
+          const sa = (map instanceof Map ? map.get(a.record.id)?.anomalyScore : undefined) ?? 0
+          const sb = (map instanceof Map ? map.get(b.record.id)?.anomalyScore : undefined) ?? 0
           return sb - sa
         })
         .slice(0, 15)

@@ -33,7 +33,7 @@ export default function Dashboard() {
               <h1>Dashboard</h1>
               <p>
                 {hasFinance
-                  ? `Reconciliation Engine · last run ${lastRunAt?.toLocaleTimeString()} · ${report.totalRecords} records processed`
+                  ? `Reconciliation Engine · last run ${lastRunAt ? (lastRunAt instanceof Date ? lastRunAt.toLocaleTimeString() : new Date(lastRunAt).toLocaleTimeString()) : 'recently'} · ${report.totalRecords} records processed`
                   : 'Multi-source reconciliation & risk console — upload CSV to populate live data'}
               </p>
             </div>

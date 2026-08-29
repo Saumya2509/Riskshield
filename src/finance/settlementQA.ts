@@ -183,7 +183,7 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
           `• **Anomaly Rate:** **${ml.anomalyRate.toFixed(1)}%** of dataset\n` +
           `• **Model Latency:** **${ml.runTimeMs}ms** execution time`,
         recommendation: `Open the Record Details page for critical anomalies to inspect the multi-feature root-cause explanation.`,
-        data: r.results.filter(x => (ml.scoreMap.get(x.record.id)?.anomalyScore ?? 0) > 45),
+        data: r.results.filter(x => (ml.scoreMap instanceof Map ? (ml.scoreMap.get(x.record.id)?.anomalyScore ?? 0) : 0) > 45),
         confidence: 95,
         category: 'ml',
       }

@@ -86,7 +86,7 @@ export default function RecordDetailsPage() {
 
   const rec = selectedRow.record
   const ldg = selectedRow.matchedLedger
-  const ml = mlResult.scoreMap.get(rec.id)
+  const ml = mlResult.scoreMap instanceof Map ? mlResult.scoreMap.get(rec.id) : undefined
   const taxItem = taxSummary.lineItems.find(t => t.recordId === rec.id)
 
   const fixedInfo = ctx.resolvedMap[rec.id]

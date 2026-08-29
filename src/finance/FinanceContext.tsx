@@ -61,6 +61,42 @@ function saveSession<T>(key: string, val: T): void {
   }
 }
 
+// ── MLBatchResult has a Map (scoreMap) which JSON.stringify drops.
+// We serialize it as an array of entries and reconstruct on load.
+function saveMLResult(val: MLBatchResult): void {
+  try {
+    const serializable = {
+      ...val,
+      scoreMap: val.scoreMap instanceof Map ? Array.from(val.scoreMap.entries()) : [],
+    }
+    sessionStorage.setItem('rs_ml_result', JSON.stringify(serializable))
+  } catch { /* quota */ }
+}
+
+function loadMLResult(): MLBatchResult | null {
+  try {
+    const raw = sessionStorage.getItem('rs_ml_result')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // Reconstruct scoreMap as a real Map
+    if (parsed && parsed.scoreMap) {
+      if (Array.isArray(parsed.scoreMap)) {
+        parsed.scoreMap = new Map(parsed.scoreMap)
+      } else if (parsed.scores && Array.isArray(parsed.scores)) {
+        // Fallback: rebuild from scores array
+        parsed.scoreMap = new Map(parsed.scores.map((s: { recordId: string }) => [s.recordId, s]))
+      } else {
+        parsed.scoreMap = new Map()
+      }
+    } else if (parsed && parsed.scores) {
+      parsed.scoreMap = new Map(parsed.scores.map((s: { recordId: string }) => [s.recordId, s]))
+    }
+    return parsed as MLBatchResult
+  } catch {
+    return null
+  }
+}
+
 const FinanceContext = createContext<FinanceContextType>({
   report: null,
   mlResult: null,
@@ -88,7 +124,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
   })
 
   const [mlResult, setMLResultState] = useState<MLBatchResult | null>(() => {
-    return loadSession<MLBatchResult | null>('ml_result', null)
+    return loadMLResult()
   })
 
   const [lastRunAt, setLastRunAt] = useState<Date | null>(() => {
@@ -119,7 +155,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
   }, [report])
 
   useEffect(() => {
-    if (mlResult) saveSession('ml_result', mlResult)
+    if (mlResult) saveMLResult(mlResult)
     else sessionStorage.removeItem('rs_ml_result')
   }, [mlResult])
 
@@ -155,7 +191,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
 
   function setMLResult(r: MLBatchResult) {
     setMLResultState(r)
-    saveSession('ml_result', r)
+    saveMLResult(r)
   }
 
   function setActiveFileName(name: string) {
