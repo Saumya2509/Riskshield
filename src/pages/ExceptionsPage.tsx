@@ -70,9 +70,15 @@ export default function ExceptionsPage() {
     if (mainEl) mainEl.scrollTop = 0
   }, [])
 
-  const allExceptions: MatchResult[] = report ? report.exceptionList : []
   const resolvedMap = ctx.resolvedMap
-  const resolvedCount = Object.keys(resolvedMap).length
+  const allExceptions: MatchResult[] = report
+    ? report.results.filter(r => r.exceptionCode !== null || r.status === 'Exception' || r.status === 'Partial' || Boolean(resolvedMap[r.record.id]))
+    : []
+  
+  const resolvedList = allExceptions.filter(e => Boolean(resolvedMap[e.record.id]))
+  const unresList = allExceptions.filter(e => !resolvedMap[e.record.id])
+  const openCount = unresList.length
+  const resolvedCount = resolvedList.length
 
   const filtered = allExceptions.filter(e => {
     const code = e.exceptionCode || (e.status === 'Partial' ? 'AMOUNT_MISMATCH' : 'NO_MATCH')
@@ -88,10 +94,12 @@ export default function ExceptionsPage() {
     return true
   })
 
-  // Count by code
+  // Open Count by code
   const codeCounts = allExceptions.reduce((acc, e) => {
-    const c = e.exceptionCode || 'AMOUNT_MISMATCH'
-    acc[c] = (acc[c] || 0) + 1
+    const c = e.exceptionCode || (e.status === 'Partial' ? 'AMOUNT_MISMATCH' : 'NO_MATCH')
+    if (!resolvedMap[e.record.id]) {
+      acc[c] = (acc[c] || 0) + 1
+    }
     return acc
   }, {} as Record<string, number>)
 
@@ -288,20 +296,34 @@ export default function ExceptionsPage() {
           {/* Header */}
           <header className="d-pagehead">
             <div>
-              <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 Exception Resolution Workbench
-                <span style={{
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  background: allExceptions.length - resolvedCount > 0 ? '#fee2e2' : '#dcfce7',
-                  color: allExceptions.length - resolvedCount > 0 ? '#991b1b' : '#15803d',
-                  borderRadius: 999
-                }}>
-                  {allExceptions.length - resolvedCount} Open Discrepancies
-                </span>
-                {resolvedCount > 0 && (
-                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', background: '#dcfce7', color: '#15803d', borderRadius: 999 }}>
+                {openCount === 0 && resolvedCount > 0 ? (
+                  <span style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    background: '#dcfce7',
+                    color: '#15803d',
+                    borderRadius: 999,
+                    border: '1px solid #86efac'
+                  }}>
+                    ✓ 0 Open Discrepancies (100% Solved)
+                  </span>
+                ) : (
+                  <span style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    background: openCount > 0 ? '#fee2e2' : '#dcfce7',
+                    color: openCount > 0 ? '#991b1b' : '#15803d',
+                    borderRadius: 999
+                  }}>
+                    {openCount} Open Discrepancies
+                  </span>
+                )}
+                {resolvedCount > 0 && openCount > 0 && (
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '3px 10px', background: '#dcfce7', color: '#15803d', borderRadius: 999 }}>
                     ✓ {resolvedCount} Fixed
                   </span>
                 )}
@@ -451,13 +473,18 @@ export default function ExceptionsPage() {
               }}
             >
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>All Exceptions</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>{allExceptions.length}</div>
-              <span style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 700 }}>{resolvedCount} Fixed</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: openCount === 0 ? '#16a34a' : '#0f172a', margin: '2px 0 0' }}>
+                {openCount}
+              </div>
+              <span style={{ fontSize: '0.68rem', color: openCount === 0 ? '#16a34a' : '#2563eb', fontWeight: 700 }}>
+                {openCount === 0 ? `✓ All ${resolvedCount} Solved` : `${resolvedCount} Fixed`}
+              </span>
             </div>
 
             {Object.entries(EXCEPTION_DESCRIPTIONS).map(([code, meta]) => {
               const count = codeCounts[code] || 0
-              if (count === 0) return null
+              const totalForCode = allExceptions.filter(e => (e.exceptionCode || (e.status === 'Partial' ? 'AMOUNT_MISMATCH' : 'NO_MATCH')) === code).length
+              if (totalForCode === 0) return null
               const isSelected = filterCode === code
               return (
                 <div
@@ -473,8 +500,12 @@ export default function ExceptionsPage() {
                   }}
                 >
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: meta.badgeColor.text, textTransform: 'uppercase' }}>{code}</span>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>{count}</div>
-                  <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{meta.label.split('/')[0]}</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: count === 0 ? '#16a34a' : '#0f172a', margin: '2px 0 0' }}>
+                    {count}
+                  </div>
+                  <span style={{ fontSize: '0.68rem', color: count === 0 ? '#16a34a' : '#64748b', fontWeight: count === 0 ? 700 : 400 }}>
+                    {count === 0 ? '✓ All Solved' : `${count} of ${totalForCode} Open`}
+                  </span>
                 </div>
               )
             })}
@@ -501,7 +532,9 @@ export default function ExceptionsPage() {
                 <p className="fin-card-desc">
                   {allExceptions.length === 0
                     ? '0 exceptions detected · Awaiting batch reconciliation'
-                    : `Showing ${filtered.length} exceptions · Click ⚡ Solve on any row to apply fix, then click 💾 Save Changes above`}
+                    : openCount === 0
+                    ? `🎉 All ${resolvedCount} exceptions resolved! Showing audit trail with applied accounting fixes.`
+                    : `Showing ${filtered.length} exceptions (${openCount} Open · ${resolvedCount} Fixed) · Click ⚡ Solve on any row to apply fix, then click 💾 Save Changes above`}
                 </p>
               </div>
             </div>
