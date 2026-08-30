@@ -81,6 +81,9 @@ const EXCEPTION_DESCRIPTIONS: Record<string, {
   },
 }
 
+// High-risk exception codes that cannot be auto-cleared and require human controller review
+const HIGH_RISK_CODES = new Set(['NO_MATCH', 'DUPLICATE', 'ORPHAN_LEDGER'])
+
 // Helper to compute aging & DSO exposure
 function getAgingInfo(recordDate?: string) {
   if (!recordDate) return { days: 1, label: '<24h Fresh', color: '#16a34a', bg: '#dcfce7', tier: 'fresh' }
@@ -88,33 +91,25 @@ function getAgingInfo(recordDate?: string) {
   const day = parseInt(parts[2] || '1', 10)
   // Calculate simulated aging relative to month-end
   const days = Math.max(1, (day % 7) + 1)
-  if (days <= 1) {
-    return { days, label: '<24h Fresh', color: '#15803d', bg: '#dcfce7', tier: 'fresh' }
-  } else if (days <= 4) {
-    return { days, label: `${days}d Lag (In-Window)`, color: '#b45309', bg: '#fef3c7', tier: 'window' }
-  } else {
-    return { days, label: `${days}d Critical Aging`, color: '#b91c1c', bg: '#fee2e2', tier: 'critical' }
-  }
+  if (days <= 1) return { days, label: '<24h Fresh', color: '#16a34a', bg: '#dcfce7', tier: 'fresh' }
+  if (days <= 4) return { days, label: `${days}d Lag`, color: '#d97706', bg: '#fef3c7', tier: 'window' }
+  return { days, label: `>${days}d Critical`, color: '#dc2626', bg: '#fee2e2', tier: 'critical' }
 }
 
 export default function ExceptionsPage() {
-  const [menuOpen, setMenuOpen] = useState(false)
   const ctx = useFinanceContext()
-
-  // Only use active report from context. If new user hasn't ingested yet, report is null.
   const report = ctx.report
   const [filterCode, setFilterCode] = useState<string>('ALL')
-  const [viewTab, setViewTab] = useState<'ALL' | 'OPEN' | 'RESOLVED'>('ALL')
   const [searchQuery, setSearchQuery] = useState<string>('')
-  
-  // Modals state
   const [solvingItem, setSolvingItem] = useState<MatchResult | null>(null)
   const [voucherItem, setVoucherItem] = useState<MatchResult | null>(null)
   const [debitNoteItem, setDebitNoteItem] = useState<MatchResult | null>(null)
-  const [activeTab, setActiveTab] = useState<string>('action-1')
-  const [customInput, setCustomInput] = useState<string>('')
-  const [analystName, setAnalystName] = useState<string>('Sarah Chen (Lead Controller)')
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [viewTab, setViewTab] = useState<'ALL' | 'OPEN' | 'RESOLVED'>('ALL')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [customInput, setCustomInput] = useState('')
+  const [activeTab, setActiveTab] = useState<'action-1' | 'action-2' | 'custom'>('action-1')
+  const [analystName, setAnalystName] = useState('Alex Morgan, Lead Controller')
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
@@ -133,6 +128,8 @@ export default function ExceptionsPage() {
   
   const resolvedList = allExceptions.filter(e => Boolean(resolvedMap[e.record.id]))
   const unresList = allExceptions.filter(e => !resolvedMap[e.record.id])
+  const unresSafe = allExceptions.filter(e => !resolvedMap[e.record.id] && !HIGH_RISK_CODES.has(e.exceptionCode || ''))
+  const unresCritical = allExceptions.filter(e => !resolvedMap[e.record.id] && HIGH_RISK_CODES.has(e.exceptionCode || ''))
   const openCount = unresList.length
   const resolvedCount = resolvedList.length
 
@@ -225,39 +222,29 @@ export default function ExceptionsPage() {
     setTimeout(() => setSaveSuccessMsg(null), 6000)
   }
 
-  // 1-Click AI Auto-Resolve All Unresolved Exceptions
+  // 1-Click AI Auto-Resolve Safe Exceptions Only (Leaves NO_MATCH, DUPLICATE, ORPHAN_LEDGER for human review)
   function handleAutoResolveAll() {
-    const unres = allExceptions.filter(e => !resolvedMap[e.record.id])
-    if (unres.length === 0) return
+    if (unresSafe.length === 0) return
 
     const newFixes: Record<string, { method: string; note: string; timestamp: string }> = {}
 
-    unres.forEach(item => {
+    unresSafe.forEach(item => {
       let method = 'Reconciled & Cleared'
       let note = 'Reconciled with 3-way ERP match.'
 
       const code = item.exceptionCode
-      if (code === 'AMOUNT_MISMATCH') {
+      if (code === 'AMOUNT_MISMATCH' || item.status === 'Partial') {
         method = 'Debit Memo Issued / Gateway Fee GL 6140'
         note = `Posted delta variance ₹${item.delta.toFixed(2)} to payment gateway processing fee GL 6140.`
       } else if (code === 'MISSING_REF') {
         method = 'Suspense Clearing GL 2190 Assigned'
         note = `Assigned PO/Invoice reference and transferred to Suspense Clearing GL 2190.`
-      } else if (code === 'DUPLICATE') {
-        method = 'Duplicate Voided & Primary Unblocked'
-        note = `Voided duplicate invoice entry. Primary payment matched and cleared.`
       } else if (code === 'CURRENCY_MISMATCH') {
         method = 'Daily Spot FX Booking Rate Applied'
         note = `Applied bank settlement exchange rate. Realized FX variance booked.`
       } else if (code === 'DATE_WINDOW_EXCEEDED') {
         method = 'Accounting Period Cutoff Adjusted'
         note = `Verified banking settlement lag within approved 3-way window.`
-      } else if (code === 'NO_MATCH') {
-        method = 'Allocated to Suspense Deposit Holding'
-        note = `Temporary deposit allocated to Suspense Holding GL 2190 awaiting counterparty claim.`
-      } else if (code === 'ORPHAN_LEDGER') {
-        method = 'Reversed Uncollected Revenue Accrual'
-        note = `Issued accrual reversal voucher #AR-2026 for uncollected ledger record.`
       }
 
       newFixes[item.record.id] = {
@@ -269,8 +256,8 @@ export default function ExceptionsPage() {
 
     ctx.applyBatchFixes(newFixes)
     ctx.saveFixesToMultiSource(newFixes)
-    setSaveSuccessMsg(`⚡ AI Auto-Resolved All ${unres.length} Exceptions! Match Rate updated to 100.0%.`)
-    setTimeout(() => setSaveSuccessMsg(null), 7000)
+    setSaveSuccessMsg(`⚡ Auto-Resolved ${unresSafe.length} Safe Discrepancies! ${unresCritical.length} High-Risk items (NO_MATCH, DUPLICATE, ORPHAN_LEDGER) held open for Controller Review.`)
+    setTimeout(() => setSaveSuccessMsg(null), 8000)
   }
 
   // Export Exceptions Audit Schedule to Styled Excel (.xls)
@@ -410,32 +397,54 @@ export default function ExceptionsPage() {
                 </strong>
               </div>
 
-              {/* 1-CLICK AI AUTO-RESOLVE ALL EXCEPTIONS */}
+              {/* 1-CLICK AI AUTO-RESOLVE SAFE EXCEPTIONS ONLY */}
               {allExceptions.length > 0 && openCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleAutoResolveAll}
-                  className="d-btn"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    height: 36,
-                    padding: '0 14px',
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 6px rgba(124,58,237,0.25)'
-                  }}
-                  title="Auto-apply recommended accounting fixes (Debit notes, Suspense GL, Spot FX) across all exceptions"
-                >
-                  ⚡ Auto-Resolve ({openCount})
-                </button>
+                unresSafe.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleAutoResolveAll}
+                    className="d-btn"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      height: 36,
+                      padding: '0 14px',
+                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 6px rgba(124,58,237,0.25)'
+                    }}
+                    title={`Auto-clear ${unresSafe.length} safe codes (MDR fee variances, lag). ${unresCritical.length} high-risk items remain for human review.`}
+                  >
+                    ⚡ Auto-Resolve Safe ({unresSafe.length})
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      height: 36,
+                      padding: '0 12px',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      color: '#991b1b',
+                      borderRadius: 8,
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="All safe exceptions are resolved. Remaining high-risk anomalies require manual human review."
+                  >
+                    🛡️ {unresCritical.length} Awaiting Human Review
+                  </div>
+                )
               )}
 
               {/* DOWNLOAD EXCEPTIONS EXCEL BUTTON */}
@@ -840,6 +849,15 @@ export default function ExceptionsPage() {
                               }}>
                                 {code}
                               </span>
+                              {!isResolved && HIGH_RISK_CODES.has(code) && (
+                                <span style={{
+                                  display: 'inline-block', padding: '1px 6px', borderRadius: 4,
+                                  fontSize: '0.66rem', fontWeight: 800,
+                                  background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5',
+                                }} title="High-risk discrepancy held open for manual controller sign-off">
+                                  🛡️ Human Review Req.
+                                </span>
+                              )}
                               {isResolved && (
                                 <span style={{
                                   display: 'inline-block', padding: '2px 7px', borderRadius: 6,
@@ -878,10 +896,14 @@ export default function ExceptionsPage() {
                               item.delta > 0.01 ? `−₹${item.delta.toFixed(2)}` : '—'
                             )}
                           </td>
-                          <td style={{ fontSize: '0.78rem', color: '#475569', maxWidth: 260 }}>
+                          <td style={{ fontSize: '0.78rem', color: '#475569', maxWidth: 280 }}>
                             {isResolved ? (
                               <span style={{ color: '#15803d', fontWeight: 600 }}>
                                 ✓ {resolvedInfo?.note}
+                              </span>
+                            ) : HIGH_RISK_CODES.has(code) ? (
+                              <span style={{ color: '#991b1b', fontWeight: 650 }}>
+                                ⚠️ {item.exceptionReason || meta.action}
                               </span>
                             ) : (
                               item.suggestedAction || meta.action
