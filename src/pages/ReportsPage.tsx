@@ -62,7 +62,10 @@ export default function ReportsPage() {
   const openAmount = exceptionList.reduce((s, r) => s + r.delta, 0)
   const totalAttempts = rawReport ? (rawReport.totalAttempts || effectiveResults.length) : 0
   const matchRate = totalAttempts > 0 ? ((totalAttempts - exceptionList.length) / totalAttempts) * 100 : 0
-  const accuracy = totalAttempts > 0 ? Math.min(100, ((exactCount + fuzzyCount) / totalAttempts) * 100) : 0
+  const accuracy = rawReport ? (rawReport.accuracy ?? (totalAttempts > 0 ? Math.min(100, ((exactCount + fuzzyCount) / totalAttempts) * 100) : 0)) : 0
+  const precision = rawReport?.precision ?? accuracy
+  const recall = rawReport?.recall ?? accuracy
+  const f1Score = rawReport?.f1Score ?? accuracy
 
   const report: ReconciliationReport = rawReport
     ? {
@@ -77,6 +80,9 @@ export default function ReportsPage() {
         openAmount,
         matchRate,
         accuracy,
+        precision,
+        recall,
+        f1Score,
       }
     : {
         batchId: 'AWAITING-INGEST',
@@ -99,6 +105,13 @@ export default function ReportsPage() {
         groundTruthChecked: 0,
         correctMatches: 0,
         accuracy: 0,
+        precision: 0,
+        recall: 0,
+        f1Score: 0,
+        truePositives: 0,
+        falsePositives: 0,
+        trueNegatives: 0,
+        falseNegatives: 0,
         runTimeMs: 0,
         passStats: [
           { pass: 1, label: 'Exact Match', matched: 0, running: 0 },
@@ -384,8 +397,11 @@ export default function ReportsPage() {
               <span style={{ fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b' }}>
                 2. Reconciliation Performance &amp; 3-Pass Rule Engine
               </span>
-              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#16a34a' }}>
-                Overall Accuracy: {report.accuracy.toFixed(0)}%
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#16a34a', display: 'flex', gap: 10 }}>
+                <span>P: {report.precision?.toFixed(1) ?? '—'}%</span>
+                <span>R: {report.recall?.toFixed(1) ?? '—'}%</span>
+                <span>F1: {report.f1Score?.toFixed(1) ?? '—'}%</span>
+                <span>Acc: {report.accuracy.toFixed(1)}%</span>
               </span>
             </div>
 

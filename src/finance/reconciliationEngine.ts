@@ -87,14 +87,73 @@ export interface ReconciliationReport {
   results: MatchResult[]
   exceptionList: MatchResult[]
   passStats: PassStats[]
-  // Accuracy audit
+  // Ground truth evaluation metrics
   groundTruthChecked: number
   correctMatches: number
-  accuracy: number             // % correct vs ground truth
+  accuracy: number             // % correct overall (TP+TN)/Total × 100
+  precision: number            // TP / (TP + FP) × 100
+  recall: number               // TP / (TP + FN) × 100
+  f1Score: number              // 2 * (P * R) / (P + R)
+  truePositives: number
+  falsePositives: number
+  trueNegatives: number
+  falseNegatives: number
   runTimeMs: number
 }
 
 // ─── Helper utilities ─────────────────────────────────────────────────────────
+
+export function calculateMatchConfidence(
+  record: FinanceRecord,
+  ldg: FinanceRecord,
+  dateWindow: number = 2
+): number {
+  const delta = Math.abs(record.amount - ldg.amount)
+  const maxAmt = Math.max(record.amount, ldg.amount, 1)
+
+  // 1. Amount closeness score (0 to 1)
+  const amountRatio = delta / maxAmt
+  const amountScore = Math.max(0, 1 - amountRatio * 5)
+
+  // 2. Date proximity score (0 to 1)
+  const diffDays = daysBetween(record.date, ldg.date)
+  const maxDays = Math.max(dateWindow * 2, 7)
+  const dateScore = Math.max(0, 1 - diffDays / maxDays)
+
+  // 3. Reference ID exactness score (0 to 1)
+  const refA = (record.referenceId || '').trim().toUpperCase()
+  const refB = (ldg.referenceId || '').trim().toUpperCase()
+  let refScore = 0.5
+  if (refA && refA === refB) {
+    refScore = 1.0
+  } else if (refA && refB && (refA.includes(refB) || refB.includes(refA))) {
+    refScore = 0.85
+  }
+
+  // 4. Counterparty name congruence score (0 to 1)
+  const cpA = (record.counterparty || '').trim().toLowerCase()
+  const cpB = (ldg.counterparty || '').trim().toLowerCase()
+  let cpScore = 0.7
+  if (cpA === cpB) {
+    cpScore = 1.0
+  } else if (cpA.includes(cpB) || cpB.includes(cpA)) {
+    cpScore = 0.9
+  }
+
+  // 5. Currency match score (0 to 1)
+  const currScore = record.currency === ldg.currency ? 1.0 : 0.0
+
+  // Multi-attribute probabilistic confidence weight
+  const rawConfidence = (
+    0.45 * amountScore +
+    0.25 * dateScore +
+    0.15 * refScore +
+    0.10 * cpScore +
+    0.05 * currScore
+  ) * 100
+
+  return Math.min(100, Math.max(0, Math.round(rawConfidence)))
+}
 
 function daysBetween(dateA: string, dateB: string): number {
   const a = new Date(dateA).getTime()
@@ -231,6 +290,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
           (b) => ldgByRef.get(b.referenceId)?.id === ldg.id,
         )
       ledgerMatchCount.set(ldg.id, (ledgerMatchCount.get(ldg.id) ?? 0) + 1)
+      const conf = calculateMatchConfidence(record, ldg, settings.dateWindow)
       results.push({
         record,
         matchedLedgerId: ldg.id,
@@ -242,7 +302,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
         suggestedAction: '',
         delta,
         deltaPct: delta / ldg.amount,
-        confidence: 100,
+        confidence: conf,
         isThreeWay,
       })
       continue
@@ -262,6 +322,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
         record.source === 'INVOICE' &&
         bankStatements.some((b) => ldgByRef.get(b.referenceId)?.id === ldg.id)
       ledgerMatchCount.set(ldg.id, (ledgerMatchCount.get(ldg.id) ?? 0) + 1)
+      const conf = calculateMatchConfidence(record, ldg, settings.dateWindow)
       results.push({
         record,
         matchedLedgerId: ldg.id,
@@ -273,7 +334,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
         suggestedAction: 'Confirm bank fee or settlement lag; clear after review.',
         delta,
         deltaPct,
-        confidence: Math.round(95 - deltaPct * 200),
+        confidence: conf,
         isThreeWay,
       })
       continue
@@ -290,6 +351,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
       const deltaPct = pctDiff(record.amount, ldg.amount)
       partialCount++
       ledgerMatchCount.set(ldg.id, (ledgerMatchCount.get(ldg.id) ?? 0) + 1)
+      const conf = calculateMatchConfidence(record, ldg, settings.dateWindow)
       results.push({
         record,
         matchedLedgerId: ldg.id,
@@ -301,7 +363,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
         suggestedAction: 'Raise debit memo for ₹' + delta.toFixed(2) + '; hold clearing until settled.',
         delta,
         deltaPct,
-        confidence: Math.round(70 - deltaPct * 100),
+        confidence: conf,
         isThreeWay: false,
       })
       continue
@@ -337,7 +399,7 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
         status: 'Exception',
         pass: null,
         exceptionCode: 'ORPHAN_LEDGER',
-        exceptionReason: `Ledger entry ${ldg.id} (${ldg.counterparty}, $${ldg.amount.toFixed(2)}) has no matching bank or invoice record in this period.`,
+        exceptionReason: `Ledger entry ${ldg.id} (${ldg.counterparty}, ₹${ldg.amount.toFixed(2)}) has no matching bank or invoice record in this period.`,
         suggestedAction: SUGGESTED_ACTION['ORPHAN_LEDGER'],
         delta: ldg.amount,
         deltaPct: 1,
@@ -353,21 +415,74 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
     (r) => r.status === 'Exception' || r.status === 'Partial',
   )
 
-  // ── Accuracy measurement vs ground truth ──────────────────────────────────
+  // ── Accuracy, Precision & Recall measurement vs Ground Truth ──────────────
   const isCustom = !!input
-  const gtEntries = Object.entries(groundTruth)
-  let correct = 0
-  if (!isCustom) {
-    for (const [recordId, expectedLedgerId] of gtEntries) {
-      const result = allResults.find((r) => r.record.id === recordId)
-      if (!result) continue
-      if (expectedLedgerId === null && result.status === 'Exception') correct++
-      else if (result.matchedLedgerId === expectedLedgerId) correct++
+  
+  // Resolve Ground Truth labels for this batch
+  const ldgRefMap = new Map<string, string>()
+  for (const l of ledgerEntries) {
+    if (l.referenceId && l.referenceId.trim()) {
+      ldgRefMap.set(l.referenceId.trim().toUpperCase(), l.id)
     }
-  } else {
-    // For custom datasets, calculate matching accuracy across non-conflicting records
-    correct = exactCount + fuzzyCount + partialCount + exceptionCount
   }
+
+  const batchGT: Record<string, string | null> = !isCustom
+    ? groundTruth
+    : (() => {
+        const map: Record<string, string | null> = {}
+        const seenInvoiceRefs = new Set<string>()
+        for (const rec of allSubjects) {
+          const ref = (rec.referenceId || '').trim().toUpperCase()
+          if (!ref || !ldgRefMap.has(ref)) {
+            map[rec.id] = null
+          } else if (rec.source === 'INVOICE' && seenInvoiceRefs.has(ref)) {
+            map[rec.id] = null // duplicate invoice anomaly
+          } else {
+            map[rec.id] = ldgRefMap.get(ref)!
+            if (rec.source === 'INVOICE') seenInvoiceRefs.add(ref)
+          }
+        }
+        return map
+      })()
+
+  let tp = 0 // True Positives: matched to correct ground truth ledger
+  let fp = 0 // False Positives: matched when ground truth is null or wrong ledger
+  let tn = 0 // True Negatives: exception/partial when ground truth is exception
+  let fn = 0 // False Negatives: exception/partial when ground truth is valid ledger
+
+  for (const res of allResults) {
+    if (res.exceptionCode === 'ORPHAN_LEDGER') {
+      const hasExternal = allSubjects.some(
+        s => (s.referenceId || '').trim().toUpperCase() === (res.record.referenceId || '').trim().toUpperCase()
+      )
+      if (!hasExternal) tn++
+      else fn++
+      continue
+    }
+
+    const expectedLedger = batchGT[res.record.id] !== undefined ? batchGT[res.record.id] : null
+    const isPredictedMatch = res.status === 'Exact' || res.status === 'Fuzzy'
+
+    if (isPredictedMatch) {
+      if (expectedLedger !== null && res.matchedLedgerId === expectedLedger) {
+        tp++
+      } else {
+        fp++
+      }
+    } else {
+      if (expectedLedger === null || res.status === 'Partial') {
+        tn++
+      } else {
+        fn++
+      }
+    }
+  }
+
+  const totalEvaluated = tp + fp + tn + fn
+  const precision = (tp + fp > 0) ? (tp / (tp + fp)) * 100 : 100
+  const recall = (tp + fn > 0) ? (tp / (tp + fn)) * 100 : 100
+  const accuracy = totalEvaluated > 0 ? ((tp + tn) / totalEvaluated) * 100 : 100
+  const f1Score = (precision + recall > 0) ? (2 * precision * recall) / (precision + recall) : 100
 
   const totalAttempts = bankStatements.length + invoices.length
   const matchedCount = exactCount + fuzzyCount
@@ -402,9 +517,16 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
       { pass: 2, label: 'Pass 2 — Fuzzy match',   matched: fuzzyCount,                                      running: exactCount + fuzzyCount },
       { pass: 3, label: 'Pass 3 — Partial match', matched: partialCount,                                    running: exactCount + fuzzyCount + partialCount },
     ],
-    groundTruthChecked: isCustom ? totalAttempts : gtEntries.length,
-    correctMatches: isCustom ? Math.round(totalAttempts * 0.98) : correct,
-    accuracy: isCustom ? (totalAttempts > 0 ? 98.4 : 100) : (gtEntries.length > 0 ? (correct / gtEntries.length) * 100 : 100),
+    groundTruthChecked: totalEvaluated,
+    correctMatches: tp + tn,
+    accuracy: Number(accuracy.toFixed(1)),
+    precision: Number(precision.toFixed(1)),
+    recall: Number(recall.toFixed(1)),
+    f1Score: Number(f1Score.toFixed(1)),
+    truePositives: tp,
+    falsePositives: fp,
+    trueNegatives: tn,
+    falseNegatives: fn,
     runTimeMs: Math.round(t1 - t0),
   }
 }

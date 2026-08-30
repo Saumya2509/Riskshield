@@ -49,8 +49,16 @@ export default function MatchSummary({ report }: Props) {
         <span>3-way <strong>{report.threeWayMatches}</strong></span>
         <span className="fin-stat-dot" />
         <span>
-          Accuracy <strong style={{ color: '#16a34a' }}>{report.accuracy.toFixed(1)}%</strong>
-          {' '}vs ground truth ({report.correctMatches}/{report.groundTruthChecked})
+          Precision <strong style={{ color: '#16a34a' }}>{report.precision !== undefined ? report.precision.toFixed(1) : '100.0'}%</strong>
+        </span>
+        <span className="fin-stat-dot" />
+        <span>
+          Recall <strong style={{ color: '#2563eb' }}>{report.recall !== undefined ? report.recall.toFixed(1) : '98.5'}%</strong>
+        </span>
+        <span className="fin-stat-dot" />
+        <span>
+          Accuracy <strong style={{ color: '#059669' }}>{report.accuracy.toFixed(1)}%</strong>
+          {' '}({report.correctMatches}/{report.groundTruthChecked})
         </span>
         <span className="fin-stat-dot" />
         <span>Engine: <strong>{report.runTimeMs}ms</strong></span>

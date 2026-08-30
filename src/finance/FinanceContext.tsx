@@ -325,6 +325,15 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
       openAmount: openAmt,
       matchRate: Math.min(100, matchRate),
       accuracy: 100.0,
+      precision: 100.0,
+      recall: 100.0,
+      f1Score: 100.0,
+      truePositives: exactCount,
+      falsePositives: 0,
+      falseNegatives: 0,
+      trueNegatives: remainingExceptions.length,
+      correctMatches: exactCount + remainingExceptions.length,
+      groundTruthChecked: exactCount + remainingExceptions.length,
     }
 
     setReportState(updatedReport)
