@@ -43,7 +43,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
   // Active Statutory Dispute Modal State
   const [disputeItem, setDisputeItem] = useState<TaxLineItem | null>(null)
   const [selectedDefenseOption, setSelectedDefenseOption] = useState<string>('opt-1')
-  const [caMembershipNo, setCaMembershipNo] = useState<string>('CA Rajesh Verma, FCA #084920 (Formatted for DSC Class-3 Sign-Off)')
+  const [caMembershipNo, setCaMembershipNo] = useState<string>('')
   const [isExecutingDefense, setIsExecutingDefense] = useState<boolean>(false)
 
   // Dynamic Regime Rate Calculation
@@ -333,8 +333,8 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
 
   <div class="signature-row">
     <div>
-      <div><strong>Certified Chartered Accountant:</strong> CA Rajesh Verma, FCA</div>
-      <div><strong>ICAI Membership No:</strong> #084920 · <strong>Firm Reg:</strong> 014238N</div>
+      <div><strong>Certified Chartered Accountant:</strong> ${caMembershipNo.trim() ? caMembershipNo.trim() : 'Chartered Accountant / Tax Signatory'}</div>
+      <div><strong>Statutory Sign-Off Status:</strong> ${defendedData ? 'Formatted for CA DSC Class-3 Sign-Off' : 'Pending CA Review'}</div>
       <div><strong>Unique Document Identification (UDIN):</strong> <span style="font-family: monospace; font-weight: bold;">${udin}</span></div>
       <div style="color: #64748b; font-size: 7.8pt; margin-top: 3px;">Verified against CBDT DIN &amp; ICAI Central Verification Portal</div>
     </div>
@@ -849,7 +849,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                 )}
 
                 {/* Financial Exposure Risk Summary */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
                   <div>
                     <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Transaction Value</small>
                     <strong style={{ display: 'block', fontSize: '1.1rem', color: '#0f172a' }}>₹{disputeItem.amount.toLocaleString('en-IN')}</strong>
@@ -869,6 +869,15 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                     </strong>
                     <span style={{ fontSize: '0.68rem', color: isDefended ? '#15803d' : '#7f1d1d' }}>200% Misreporting Scale</span>
                   </div>
+                  <div>
+                    <small style={{ color: '#64748b', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>Statutory Status</small>
+                    <strong style={{ display: 'block', fontSize: '0.95rem', color: isDefended ? '#16a34a' : '#d97706', marginTop: 2 }}>
+                      {isDefended ? '✓ Formatted for CA' : 'Pending CA Review'}
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', color: isDefended ? '#15803d' : '#b45309' }}>
+                      {isDefended ? 'Ready for DSC Sign-Off' : 'Awaiting Confirmation'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Allegation & Statutory Issue Details */}
@@ -881,12 +890,12 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                   </p>
                 </div>
 
-                {/* Hard Defense Options */}
-                <p style={{ fontSize: '0.76rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
-                  {isDefended ? 'Applied Legal &amp; CA Defense Mechanism:' : 'Select Expert Legal &amp; CA Defense Mechanism:'}
-                </p>
+                {/* Available Statutory Defense Submissions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>
+                    Select Statutory Resolution Pathway (CBDT e-Filing &amp; Form 26A Engine)
+                  </span>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: isDefended ? 'none' : 'auto', opacity: isDefended ? 0.85 : 1 }}>
                   <div
                     onClick={() => setSelectedDefenseOption('opt-1')}
                     style={{
@@ -898,10 +907,10 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                     }}
                   >
                     <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
-                      📑 Option 1: File Section 144B Electronic Written Submission with 3-Way Reconciled ERP Trail
+                      📜 Option 1: File Section 144B e-Response with 3-Way Reconciled Hash Trail
                     </strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
-                      Uploads verified cross-matching bank UTR voucher, invoice E-way QR code, and ledger entry to prove bona fide trade expenditure under Section 37(1).
+                      Assembles Bank MT940 timestamp, SAP ledger voucher, and verified invoice into a cryptographically sealed PDF schedule for the National Faceless Assessment Centre (NFAC).
                     </p>
                   </div>
 
@@ -916,7 +925,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                     }}
                   >
                     <strong style={{ fontSize: '0.86rem', color: '#1e40af' }}>
-                      📜 Option 2: Upload Form 26A / Chartered Accountant Certificate under 1st Proviso to Sec 201(1)
+                      📑 Option 2: Upload Form 26A CA Certificate under First Proviso to Section 201(1)
                     </strong>
                     <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#475569' }}>
                       Certifies payee counterparty furnished ITR and paid taxes, eliminating the 30% statutory disallowance under Section 40(a)(ia).
@@ -962,13 +971,27 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
 
                 {/* Auditor Sign-Off & DSC Authorization */}
                 <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                    Authorized Signatory · Formatted for CA DSC Class-3 Sign-Off
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                      Authorized Signatory · CA Membership / DSC Details
+                    </label>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: isDefended ? '#15803d' : '#b45309',
+                      background: isDefended ? '#dcfce7' : '#fef3c7',
+                      border: `1px solid ${isDefended ? '#86efac' : '#fde68a'}`,
+                      padding: '1px 8px',
+                      borderRadius: 999
+                    }}>
+                      {isDefended ? '✓ Formatted for CA Sign-Off' : 'Pending CA Review'}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={caMembershipNo}
                     readOnly={isDefended}
+                    placeholder="Enter CA Name, ICAI Membership No. & Firm Reg (e.g. CA [Name], FCA #[Number])"
                     onChange={(e) => setCaMembershipNo(e.target.value)}
                     style={{
                       width: '100%',
