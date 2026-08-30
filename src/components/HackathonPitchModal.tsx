@@ -152,7 +152,7 @@ export default function HackathonPitchModal({ isOpen, onClose }: Props) {
                 <div><code>   │</code></div>
                 <div><code>   ├──▶ 3-Pass Rule Engine (Exact / Fuzzy / Partial) ──▶ 98.4% Match Rate</code></div>
                 <div><code>   ├──▶ ML Isolation Forest (6-D Feature Vector)    ──▶ Anomaly Flagging</code></div>
-                <div><code>   ├──▶ Statutory Tax Matcher (Sec 148 / 195 / 88C) ──▶ CA DSC Certification</code></div>
+                <div><code>   ├──▶ Statutory Tax Matcher (Sec 148 / 195 / 88C) ──▶ CA DSC Format</code></div>
                 <div><code>   └──▶ Forward Liquidity Forecaster (T+1…T+7)       ──▶ Daily Cash Curve</code></div>
               </div>
             </div>
@@ -181,7 +181,7 @@ export default function HackathonPitchModal({ isOpen, onClose }: Props) {
                   <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.8rem', color: '#14532d', lineHeight: 1.7 }}>
                     <li><strong>3-Second Autonomous Matching</strong> across 500+ multi-source transactions.</li>
                     <li>1-Click Accounting Fixes: Automated debit notes, suspense GL 2190, &amp; FX gains/loss.</li>
-                    <li><strong>Built-in Statutory Tax Notice Defense</strong> with DIN tracking &amp; CA DSC Class-3 signing.</li>
+                    <li><strong>Built-in Statutory Tax Notice Defense</strong>: Builds audit trail for CA's 270A response formatted for CA DSC Class-3 sign-off.</li>
                     <li>Epistemic T+1 to T+7 forward liquidity curves with DSO lag stress-testing.</li>
                   </ul>
                 </div>
@@ -205,8 +205,8 @@ export default function HackathonPitchModal({ isOpen, onClose }: Props) {
 
                 <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', textAlign: 'center' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#16a34a' }}>₹0</div>
-                  <strong style={{ fontSize: '0.82rem', color: '#166534', display: 'block', margin: '4px 0' }}>Sec 270A Penalties</strong>
-                  <span style={{ fontSize: '0.74rem', color: '#15803d' }}>100% deduction protection under Section 37(1) &amp; Rule 88C.</span>
+                  <strong style={{ fontSize: '0.82rem', color: '#166534', display: 'block', margin: '4px 0' }}>CA 270A Response</strong>
+                  <span style={{ fontSize: '0.74rem', color: '#15803d' }}>Builds audit trail for CA's 270A response under Section 37(1) &amp; Rule 88C.</span>
                 </div>
 
                 <div style={{ padding: '16px', background: '#faf5ff', borderRadius: 10, border: '1px solid #e9d5ff', textAlign: 'center' }}>
@@ -246,7 +246,7 @@ export default function HackathonPitchModal({ isOpen, onClose }: Props) {
                   <strong style={{ fontSize: '0.86rem', color: '#0f172a', display: 'block', marginBottom: 8 }}>🔒 Security &amp; Statutory Compliance</strong>
                   <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.78rem', color: '#475569', lineHeight: 1.6 }}>
                     <li><strong>Supabase Cloud Realtime</strong> for persistent audit logging &amp; multi-analyst sync.</li>
-                    <li><strong>CA Digital Signature (DSC Class-3)</strong> validation standard.</li>
+                    <li><strong>Formatted for CA Digital Signature (DSC Class-3)</strong> sign-off standard.</li>
                     <li><strong>Income Tax DIN Compliant</strong> (Document Identification Number).</li>
                     <li><strong>GST DRC-01 Rule 88C</strong> outward vs inward turnover reconciliation.</li>
                   </ul>

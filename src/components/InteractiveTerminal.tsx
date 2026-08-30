@@ -117,9 +117,9 @@ export default function InteractiveTerminal() {
                 <div style={{ color: '#60a5fa' }}>$ riskshield statutory-defense --regime=115BAA --din=DIN-2026-CBDT-849204</div>
                 <div style={{ color: '#94a3b8' }}>[00:01] Fetching Section 148 / 143(2) scrutiny notice from NFAC New Delhi...</div>
                 <div style={{ color: '#4ade80' }}>[00:02] Assembling Section 144B Electronic Written Submission with Reconciled Trail...</div>
-                <div style={{ color: '#a5b4fc' }}>[00:03] CA Digital Signature Certificate (DSC Class-3) signed by CA Rajesh Verma, FCA #084920</div>
+                <div style={{ color: '#a5b4fc' }}>[00:03] Submission formatted for CA Digital Signature Certificate (DSC Class-3) sign-off</div>
                 <div style={{ color: '#4ade80', fontWeight: 800, marginTop: 4 }}>
-                  [00:04] ✓ Section 270A 200% Misreporting Penalty ($15,000 / ₹1,24,000) Successfully Mitigated
+                  [00:04] ✓ Audit Trail Generated for CA 270A Response (₹1,24,000 Misreporting Defense)
                 </div>
               </div>
             )}

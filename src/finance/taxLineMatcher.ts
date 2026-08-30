@@ -368,7 +368,7 @@ export function runTaxLineMatcher(report: ReconciliationReport): TaxSummary {
     } else if (taxCat === 'Unclassified' || risk.level === 'High') {
       statutoryNoticeType = 'CBDT Sec 148 / 143(2) Scrutiny'
       assessingOfficer = 'DCIT Circle 3(1), Central Revenue Building'
-      legalDefenseRationale = 'Submit Section 144B response with verified ERP journal entry and bank UTR to prevent 200% under-reporting penalty under Sec 270A.'
+      legalDefenseRationale = 'Submit Section 144B response with verified ERP journal entry and bank UTR. Builds audit trail for CA\'s 270A response.'
     } else if (row.status === 'Partial') {
       statutoryNoticeType = 'GST DRC-01 Rule 88C Turnover Mismatch'
       assessingOfficer = 'Superintendent Range-IV, GST Delhi South'

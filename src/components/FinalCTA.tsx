@@ -38,7 +38,7 @@ export default function FinalCTA() {
           <span>·</span>
           <span>✓ 100% ACID Audit Logs</span>
           <span>·</span>
-          <span>✓ Section 270A Shield</span>
+          <span>✓ CA 270A Audit Trail</span>
         </div>
       </div>
     </section>

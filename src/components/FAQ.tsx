@@ -10,8 +10,8 @@ const FAQS = [
     a: 'Pass 1 executes deterministic SHA-256 hash matching on identical amounts and reference IDs with zero delta. Pass 2 applies heuristic fuzzy matching to account for payment gateway fee absorption (±1.5% MDR) and settlement window lag (±2 days). Pass 3 flags partial short-pays and duplicate billings. The entire algorithm is compiled in optimized TypeScript executing 500 records in 2.8ms.'
   },
   {
-    q: 'How does RiskShield mitigate Income Tax Section 270A penalties?',
-    a: 'Under Section 270A of the Income Tax Act, under-reporting or misreporting of income incurs a mandatory 200% penalty. RiskShield reconciles tax-deductible expenses against GST DRC-01 and Section 148 notices, automatically generating Section 144B e-filing defense submissions and Form 26A/201(1) certificates digitally signed with CA DSC Class-3 credentials.'
+    q: 'How does RiskShield build audit trails for Income Tax Section 270A responses?',
+    a: 'Under Section 270A of the Income Tax Act, under-reporting or misreporting of income incurs a mandatory 200% penalty. RiskShield reconciles tax-deductible expenses against GST DRC-01 and Section 148 notices, building an audit trail for CA\'s 270A response with Section 144B e-filing defense submissions and Form 26A/201(1) certificates formatted for CA DSC Class-3 sign-off.'
   },
   {
     q: 'Can RiskShield integrate with SAP ECC, Oracle NetSuite, and custom bank feeds?',
@@ -35,7 +35,7 @@ export default function FAQ() {
             FREQUENTLY ASKED QUESTIONS
           </div>
           <h2>Everything You Need to Know</h2>
-          <p>Clear answers on 3-way reconciliation architecture, Section 270A penalty protection, and enterprise integrations.</p>
+          <p>Clear answers on 3-way reconciliation architecture, Section 270A CA audit trail response, and enterprise integrations.</p>
         </div>
 
         <div>

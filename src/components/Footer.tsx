@@ -57,7 +57,7 @@ export default function Footer() {
               <li><a href="#/tax-matcher" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.15s' }}>CBDT Section 115BAA</a></li>
               <li><a href="#/tax-matcher" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.15s' }}>Section 148 Defense</a></li>
               <li><a href="#/tax-matcher" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.15s' }}>Form 15CB DTAA Portal</a></li>
-              <li><a href="#/tax-matcher" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.15s' }}>CA DSC Class-3 Signing</a></li>
+              <li><a href="#/tax-matcher" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.15s' }}>Formatted for CA DSC Class-3 Sign-Off</a></li>
               <li><a href="#/tax-matcher" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.15s' }}>PostgreSQL RLS Vault</a></li>
             </ul>
           </div>

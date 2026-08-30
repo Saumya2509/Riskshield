@@ -62,7 +62,7 @@ const SCENARIOS: Scenario[] = [
       statusLabel: '🛡️ Form 15CB DTAA Defense Filed',
       color: '#f59e0b',
       delta: '₹2,000.00 FX Variance',
-      mechanism: 'Form 15CB Certificate signed with CA DSC Class-3 · Sec 270A Shielded',
+      mechanism: 'Form 15CB formatted for CA DSC Class-3 sign-off · Builds audit trail for CA\'s 270A response',
       speed: '2.8 ms execution'
     }
   }

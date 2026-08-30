@@ -41,7 +41,7 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
         `• 💰 **Liquidity & Open Variances:** Ask *"What is our net open position?"*\n` +
         `• 🌲 **6-D ML Anomaly Detection:** Ask *"Run ML anomaly scoring and show high-risk items"*\n` +
         `• 📈 **Predictive Forecaster:** Ask *"Show 7-day forward cash forecast and peak liquidity"*\n` +
-        `• 🏛️ **Statutory Tax & Penalty Defense:** Ask *"How does Section 270A penalty defense work?"*\n` +
+        `• 🏛️ **Statutory Tax & 270A Response:** Ask *"How does RiskShield build audit trails for CA's 270A response?"*\n` +
         `• 🔍 **Specific Transaction Audit:** Ask *"Audit record B1-BNK-001"* or *"Show Razorpay records"*`,
       recommendation: 'Type any financial query or click one of the suggested chips above to begin auditing.',
       data: null,
@@ -113,10 +113,10 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
       const tax = runTaxLineMatcher(r)
       return {
         thinkingProcess: [
-          `Identified query intent: Statutory Tax Obligations & Section 270A Penalty Defense`,
+          `Identified query intent: Statutory Tax Obligations & Section 270A CA Response Audit Trail`,
           `Executed Tax-Line Matcher across ${tax.lineItems.length} classified records`,
           `Classified ₹${Math.round(tax.totalGrossRevenue).toLocaleString('en-IN')} gross revenue under Corporate Tax / GST schedule`,
-          `Calculated Section 270A penalty shield (200% under-reporting protection)`,
+          `Calculated Section 270A audit trail metrics (builds audit trail for CA's 270A response)`,
           `Evaluated corporate tax regime: Section 115BAA @ 25.17% vs Old Regime @ 34.94%`,
           `Calculated estimated corporate tax liability = ₹${Math.round(tax.estimatedTaxLiability).toLocaleString('en-IN')}`,
         ],
@@ -124,10 +124,10 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
           `• **Estimated Corporate Tax Liability:** **₹${Math.round(tax.estimatedTaxLiability).toLocaleString('en-IN')}** (Effective Rate: ${(tax.effectiveTaxRate * 100).toFixed(1)}% under Section 115BAA)\n` +
           `• **Gross Taxable Revenue:** ₹${Math.round(tax.totalGrossRevenue).toLocaleString('en-IN')} (GL: \`4000-REV\`)\n` +
           `• **Deductible Operating Expenses:** ₹${Math.round(tax.totalDeductions).toLocaleString('en-IN')} (GL: \`5000-COR\` / \`6000-OPX\`)\n` +
-          `• **Section 270A Penalty Shield:** Mitigates **200% misreporting penalties** via automated Section 144B e-filing with CA DSC Class-3 digital signatures.\n` +
+          `• **Section 270A CA Audit Trail:** Builds audit trail for CA's 270A response formatted for CA DSC Class-3 sign-off.\n` +
           `• **Foreign Withholding Tax (WHT):** ₹${Math.round(tax.totalForeignWithholding).toLocaleString('en-IN')}\n` +
           `• **Tax Automation Rate:** **${tax.automationRate.toFixed(1)}%** auto-assigned`,
-        recommendation: `Navigate to the **Tax Matcher** page to view and digitally sign statutory defense certificates for open NFAC notices.`,
+        recommendation: `Navigate to the **Tax Matcher** page to inspect the audit package formatted for CA DSC Class-3 sign-off.`,
         data: null,
         confidence: 98,
         category: 'tax',

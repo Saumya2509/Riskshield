@@ -119,7 +119,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       {
         id: 'nav-tax',
         title: 'Statutory Tax & Notice Defense',
-        subtitle: 'Section 115BAA vs Old Regime, Section 270A penalty shield, and Form 26A',
+        subtitle: 'Section 115BAA vs Old Regime, builds audit trail for CA\'s 270A response, and Form 26A',
         category: 'Pages',
         icon: '🏛️',
         badge: 'Tax Shield',
@@ -130,7 +130,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       {
         id: 'nav-rep',
         title: 'Executive Audit Reports',
-        subtitle: 'Certified PDF/Excel exports with CA DSC Class-3 digital signatures',
+        subtitle: 'Certified PDF/Excel exports formatted for CA DSC Class-3 sign-off',
         category: 'Pages',
         icon: '📑',
         action: () => { window.location.hash = '#/reports'; onClose(); }

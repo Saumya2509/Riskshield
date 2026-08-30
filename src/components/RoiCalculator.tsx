@@ -67,8 +67,8 @@ export default function RoiCalculator() {
               <div className="lp-calc-card-val" style={{ color: '#10b981' }}>
                 ₹{penaltyShield} Lakhs
               </div>
-              <div className="lp-calc-card-lbl">Sec 270A Penalty Shield</div>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>200% Misreporting Protection</div>
+              <div className="lp-calc-card-lbl">CA 270A Audit Trail</div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>Builds Audit Trail for CA Response</div>
             </div>
 
             <div className="lp-calc-card">

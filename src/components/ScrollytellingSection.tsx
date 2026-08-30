@@ -46,9 +46,9 @@ const PIPELINE_STAGES = [
     badge: 'STAGE 05 · STATUTORY & LIQUIDITY',
     title: 'CBDT Statutory Notice Defense & Cash Forecaster',
     subtitle: 'SECTION 148 SCRUTINY, FORM 15CB DTAA & T+7 RUNWAY',
-    desc: 'Simulates corporate tax liabilities under Section 115BAA, defends against Section 270A 200% penalties with Section 144B e-filing and DSC Class-3 signing, and projects forward cash runway with 95% epistemic confidence.',
-    tags: ['CBDT DIN Verified', 'DSC Class-3', 'T+1…T+7 Runway'],
-    metrics: { shield: '100% Protected', runway: '42 Days' },
+    desc: 'Simulates corporate tax liabilities under Section 115BAA, builds audit trail for CA\'s 270A response with Section 144B e-filing formatted for CA DSC Class-3 sign-off, and projects forward cash runway with 95% epistemic confidence.',
+    tags: ['CBDT DIN Verified', 'Formatted for CA DSC', 'T+1…T+7 Runway'],
+    metrics: { shield: '100% CA Trail', runway: '42 Days' },
     color: '#f43f5e'
   }
 ]

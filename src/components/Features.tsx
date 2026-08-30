@@ -118,7 +118,7 @@ export default function Features() {
               <div className="lp-bento-icon-glow" style={{ color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.3)' }}>🏛️</div>
               <div className="lp-bento-title">Statutory Tax &amp; DIN Notice Defense Terminal</div>
               <p className="lp-bento-desc">
-                Simulate corporate tax liabilities across Section 115BAA (@25.17%), Old Regime (@34.94%), and Section 115BAB (@17.16%). Mitigate Section 270A 200% misreporting penalties through automated Section 144B e-filing submissions with Class-3 Digital Signature Certificates (DSC).
+                Simulate corporate tax liabilities across Section 115BAA (@25.17%), Old Regime (@34.94%), and Section 115BAB (@17.16%). Builds audit trail for CA's 270A response through automated Section 144B e-filing submissions formatted for CA DSC Class-3 sign-off.
               </p>
             </div>
 
@@ -140,7 +140,7 @@ export default function Features() {
                 </div>
               </div>
               <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '6px 14px', borderRadius: 8, color: '#4ade80', fontSize: '0.78rem', fontWeight: 700 }}>
-                ✓ Sec 270A Protected
+                ✓ CA 270A Audit Trail
               </div>
             </div>
           </div>

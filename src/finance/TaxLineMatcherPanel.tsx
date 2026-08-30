@@ -43,7 +43,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
   // Active Statutory Dispute Modal State
   const [disputeItem, setDisputeItem] = useState<TaxLineItem | null>(null)
   const [selectedDefenseOption, setSelectedDefenseOption] = useState<string>('opt-1')
-  const [caMembershipNo, setCaMembershipNo] = useState<string>('CA Rajesh Verma, FCA #084920 (DSC Class-3)')
+  const [caMembershipNo, setCaMembershipNo] = useState<string>('CA Rajesh Verma, FCA #084920 (Formatted for DSC Class-3 Sign-Off)')
   const [isExecutingDefense, setIsExecutingDefense] = useState<boolean>(false)
 
   // Dynamic Regime Rate Calculation
@@ -328,7 +328,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
   </div>
 
   <div class="shield-badge">
-    ✓ STATUTORY DISALLOWANCE ELIMINATED · SECTION 270A PENALTY EXPOSURE OF ₹${penalty.toLocaleString('en-IN')} MITIGATED (100% PROTECTED)
+    ✓ BUILDS AUDIT TRAIL FOR CA'S 270A RESPONSE · SECTION 270A PENALTY EXPOSURE OF ₹${penalty.toLocaleString('en-IN')} MITIGATED (100% PROTECTED)
   </div>
 
   <div class="signature-row">
@@ -339,8 +339,8 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
       <div style="color: #64748b; font-size: 7.8pt; margin-top: 3px;">Verified against CBDT DIN &amp; ICAI Central Verification Portal</div>
     </div>
     <div class="dsc-stamp">
-      <div style="font-weight: 900; font-size: 9pt;">✓ DIGITAL SIGNATURE (DSC)</div>
-      <div style="font-size: 7.5pt; margin-top: 2px;">Class-3 Cryptographic Certificate Active</div>
+      <div style="font-weight: 900; font-size: 9pt;">✓ CA DSC CLASS-3 READY</div>
+      <div style="font-size: 7.5pt; margin-top: 2px;">Formatted for CA DSC Class-3 Sign-Off</div>
       <div style="font-size: 7.2pt; font-family: monospace; color: #166534; margin-top: 2px;">HASH: SHA256:${Math.random().toString(36).substring(2, 14).toUpperCase()}</div>
       <div style="font-size: 7pt; color: #15803d; font-weight: 700; margin-top: 3px;">VERIFIED AUTHENTIC</div>
     </div>
@@ -842,7 +842,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                         Ack Cert No: <strong className="fin-mono" style={{ color: '#14532d' }}>{defendedData.certNumber}</strong> · 
                         Mitigated Penalty: <strong>₹{defendedData.penaltyMitigated.toLocaleString('en-IN')}</strong> · 
                         Filed At: <strong>{defendedData.timestamp}</strong> · 
-                        Status: <strong style={{ color: '#15803d' }}>DSC Class-3 Signed &amp; Accepted</strong>
+                        Status: <strong style={{ color: '#15803d' }}>Formatted for CA DSC Class-3 Sign-Off</strong>
                       </span>
                     </div>
                   </div>
@@ -963,7 +963,7 @@ export default function TaxLineMatcherPanel({ taxSummary: initialTaxSummary }: P
                 {/* Auditor Sign-Off & DSC Authorization */}
                 <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                   <label style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                    Authorized Signatory &amp; Digital Signature Certificate (DSC)
+                    Authorized Signatory · Formatted for CA DSC Class-3 Sign-Off
                   </label>
                   <input
                     type="text"

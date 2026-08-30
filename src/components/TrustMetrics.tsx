@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 const METRICS = [
   { val: 98.4, suffix: '%', label: '3-Way Match Rate', sub: 'Pass 1 Exact + Pass 2 Fuzzy', color: '#10b981' },
   { val: 2.8, suffix: ' ms', label: 'Processing Latency', sub: 'Sub-3ms per 500 records', color: '#38bdf8' },
-  { val: 0, prefix: '₹', suffix: '', label: 'Sec 270A Penalty Paid', sub: '100% Mitigated via DIN Trail', color: '#a78bfa', display: '₹0' },
+  { val: 0, prefix: '₹', suffix: '', label: 'Sec 270A Penalties', sub: 'Builds Audit Trail for CA Response', color: '#a78bfa', display: '₹0' },
   { val: 7, prefix: 'T+', suffix: ' Days', label: 'Forward Cash Runway', sub: '95% Epistemic Confidence', color: '#fbbf24' },
 ]
 

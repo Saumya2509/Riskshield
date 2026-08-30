@@ -7,7 +7,7 @@ export default function Hero() {
     { pass: 'PASS 1 EXACT', text: '432 / 500 records matched with hash ref (0.00 delta)', color: '#4ade80' },
     { pass: 'PASS 2 FUZZY', text: '46 records reconciled within ±1.5% MDR fee tolerance', color: '#38bdf8' },
     { pass: 'AUTONOMOUS SOLVE', text: '39 exceptions auto-settled via Gateway Fee GL 6140', color: '#fbbf24' },
-    { pass: 'STATUTORY DEFENSE', text: 'NFAC DIN-849204 Verified · Sec 270A 200% Shield Active', color: '#a78bfa' }
+    { pass: 'STATUTORY DEFENSE', text: 'NFAC DIN-849204 Verified · Builds Audit Trail for CA 270A Response', color: '#a78bfa' }
   ]
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function Hero() {
             </h1>
 
             <p className="lp-hero-desc">
-              Ingest Bank MT940 statements, ERP General Ledgers, and GST e-Invoices. Execute 3-pass deterministic matching, isolate high-risk anomalies with 6-D vector ML, and defend balance sheets against Section 270A penalties.
+              Ingest Bank MT940 statements, ERP General Ledgers, and GST e-Invoices. Execute 3-pass deterministic matching, isolate high-risk anomalies with 6-D vector ML, and build audit trails for CA's 270A response.
             </p>
 
             <div className="lp-hero-actions">
@@ -62,7 +62,7 @@ export default function Hero() {
               </div>
               <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
               <div className="lp-hero-badge-item">
-                <span style={{ color: '#a78bfa', fontWeight: 800 }}>✓</span> DIN Notice &amp; CA DSC Class-3
+                <span style={{ color: '#a78bfa', fontWeight: 800 }}>✓</span> DIN Notice &amp; Formatted for CA DSC
               </div>
             </div>
           </div>
@@ -121,7 +121,7 @@ export default function Hero() {
 
                   <div className="lp-kpi-item-mini">
                     <div className="lp-kpi-val-mini" style={{ color: '#a78bfa' }}>₹3.42 L</div>
-                    <div className="lp-kpi-lbl-mini">270A Shield</div>
+                    <div className="lp-kpi-lbl-mini">270A CA Trail</div>
                   </div>
                 </div>
               </div>
