@@ -334,6 +334,7 @@ export function FinanceContextProvider({ children }: { children: ReactNode }) {
       trueNegatives: remainingExceptions.length,
       correctMatches: exactCount + remainingExceptions.length,
       groundTruthChecked: exactCount + remainingExceptions.length,
+      isGroundTruthAvailable: true,
     }
 
     setReportState(updatedReport)

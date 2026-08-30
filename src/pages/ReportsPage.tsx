@@ -62,10 +62,10 @@ export default function ReportsPage() {
   const openAmount = exceptionList.reduce((s, r) => s + r.delta, 0)
   const totalAttempts = rawReport ? (rawReport.totalAttempts || effectiveResults.length) : 0
   const matchRate = totalAttempts > 0 ? ((totalAttempts - exceptionList.length) / totalAttempts) * 100 : 0
-  const accuracy = rawReport ? (rawReport.accuracy ?? (totalAttempts > 0 ? Math.min(100, ((exactCount + fuzzyCount) / totalAttempts) * 100) : 0)) : 0
-  const precision = rawReport?.precision ?? accuracy
-  const recall = rawReport?.recall ?? accuracy
-  const f1Score = rawReport?.f1Score ?? accuracy
+  const accuracy = rawReport ? rawReport.accuracy : null
+  const precision = rawReport ? rawReport.precision : null
+  const recall = rawReport ? rawReport.recall : null
+  const f1Score = rawReport ? rawReport.f1Score : null
 
   const report: ReconciliationReport = rawReport
     ? {
@@ -104,14 +104,15 @@ export default function ReportsPage() {
         threeWayMatches: 0,
         groundTruthChecked: 0,
         correctMatches: 0,
-        accuracy: 0,
-        precision: 0,
-        recall: 0,
-        f1Score: 0,
-        truePositives: 0,
-        falsePositives: 0,
-        trueNegatives: 0,
-        falseNegatives: 0,
+        accuracy: null,
+        precision: null,
+        recall: null,
+        f1Score: null,
+        truePositives: null,
+        falsePositives: null,
+        trueNegatives: null,
+        falseNegatives: null,
+        isGroundTruthAvailable: false,
         runTimeMs: 0,
         passStats: [
           { pass: 1, label: 'Exact Match', matched: 0, running: 0 },
@@ -398,10 +399,10 @@ export default function ReportsPage() {
                 2. Reconciliation Performance &amp; 3-Pass Rule Engine
               </span>
               <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#16a34a', display: 'flex', gap: 10 }}>
-                <span>P: {report.precision?.toFixed(1) ?? '—'}%</span>
-                <span>R: {report.recall?.toFixed(1) ?? '—'}%</span>
-                <span>F1: {report.f1Score?.toFixed(1) ?? '—'}%</span>
-                <span>Acc: {report.accuracy.toFixed(1)}%</span>
+                <span>P: {report.precision != null ? `${report.precision.toFixed(1)}%` : 'N/A'}</span>
+                <span>R: {report.recall != null ? `${report.recall.toFixed(1)}%` : 'N/A'}</span>
+                <span>F1: {report.f1Score != null ? `${report.f1Score.toFixed(1)}%` : 'N/A'}</span>
+                <span>Acc: {report.accuracy != null ? `${report.accuracy.toFixed(1)}%` : 'N/A'}</span>
               </span>
             </div>
 

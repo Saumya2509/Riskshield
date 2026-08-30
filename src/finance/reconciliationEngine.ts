@@ -20,6 +20,7 @@ export interface ReconciliationInput {
   bankStatements?: FinanceRecord[]
   ledgerEntries?: FinanceRecord[]
   invoices?: FinanceRecord[]
+  groundTruth?: Record<string, string | null>
 }
 
 export type MatchStatus = 'Exact' | 'Fuzzy' | 'Partial' | 'Exception' | 'Pending'
@@ -87,17 +88,18 @@ export interface ReconciliationReport {
   results: MatchResult[]
   exceptionList: MatchResult[]
   passStats: PassStats[]
-  // Ground truth evaluation metrics
+  // Ground truth evaluation metrics (null for unlabeled user uploads)
   groundTruthChecked: number
   correctMatches: number
-  accuracy: number             // % correct overall (TP+TN)/Total × 100
-  precision: number            // TP / (TP + FP) × 100
-  recall: number               // TP / (TP + FN) × 100
-  f1Score: number              // 2 * (P * R) / (P + R)
-  truePositives: number
-  falsePositives: number
-  trueNegatives: number
-  falseNegatives: number
+  accuracy: number | null             // % correct overall (TP+TN)/Total × 100, or null if unlabeled
+  precision: number | null            // TP / (TP + FP) × 100, or null if unlabeled
+  recall: number | null               // TP / (TP + FN) × 100, or null if unlabeled
+  f1Score: number | null              // 2 * (P * R) / (P + R), or null if unlabeled
+  truePositives: number | null
+  falsePositives: number | null
+  trueNegatives: number | null
+  falseNegatives: number | null
+  isGroundTruthAvailable: boolean
   runTimeMs: number
 }
 
@@ -417,72 +419,52 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
 
   // ── Accuracy, Precision & Recall measurement vs Ground Truth ──────────────
   const isCustom = !!input
-  
-  // Resolve Ground Truth labels for this batch
-  const ldgRefMap = new Map<string, string>()
-  for (const l of ledgerEntries) {
-    if (l.referenceId && l.referenceId.trim()) {
-      ldgRefMap.set(l.referenceId.trim().toUpperCase(), l.id)
-    }
-  }
-
-  const batchGT: Record<string, string | null> = !isCustom
+  const batchGT: Record<string, string | null> | null = !isCustom
     ? groundTruth
-    : (() => {
-        const map: Record<string, string | null> = {}
-        const seenInvoiceRefs = new Set<string>()
-        for (const rec of allSubjects) {
-          const ref = (rec.referenceId || '').trim().toUpperCase()
-          if (!ref || !ldgRefMap.has(ref)) {
-            map[rec.id] = null
-          } else if (rec.source === 'INVOICE' && seenInvoiceRefs.has(ref)) {
-            map[rec.id] = null // duplicate invoice anomaly
-          } else {
-            map[rec.id] = ldgRefMap.get(ref)!
-            if (rec.source === 'INVOICE') seenInvoiceRefs.add(ref)
-          }
-        }
-        return map
-      })()
+    : (input?.groundTruth ?? null)
+
+  const isGroundTruthAvailable = batchGT !== null
 
   let tp = 0 // True Positives: matched to correct ground truth ledger
   let fp = 0 // False Positives: matched when ground truth is null or wrong ledger
   let tn = 0 // True Negatives: exception/partial when ground truth is exception
   let fn = 0 // False Negatives: exception/partial when ground truth is valid ledger
 
-  for (const res of allResults) {
-    if (res.exceptionCode === 'ORPHAN_LEDGER') {
-      const hasExternal = allSubjects.some(
-        s => (s.referenceId || '').trim().toUpperCase() === (res.record.referenceId || '').trim().toUpperCase()
-      )
-      if (!hasExternal) tn++
-      else fn++
-      continue
-    }
-
-    const expectedLedger = batchGT[res.record.id] !== undefined ? batchGT[res.record.id] : null
-    const isPredictedMatch = res.status === 'Exact' || res.status === 'Fuzzy'
-
-    if (isPredictedMatch) {
-      if (expectedLedger !== null && res.matchedLedgerId === expectedLedger) {
-        tp++
-      } else {
-        fp++
+  if (isGroundTruthAvailable && batchGT) {
+    for (const res of allResults) {
+      if (res.exceptionCode === 'ORPHAN_LEDGER') {
+        const hasExternal = allSubjects.some(
+          s => (s.referenceId || '').trim().toUpperCase() === (res.record.referenceId || '').trim().toUpperCase()
+        )
+        if (!hasExternal) tn++
+        else fn++
+        continue
       }
-    } else {
-      if (expectedLedger === null || res.status === 'Partial') {
-        tn++
+
+      const expectedLedger = batchGT[res.record.id] !== undefined ? batchGT[res.record.id] : null
+      const isPredictedMatch = res.status === 'Exact' || res.status === 'Fuzzy'
+
+      if (isPredictedMatch) {
+        if (expectedLedger !== null && res.matchedLedgerId === expectedLedger) {
+          tp++
+        } else {
+          fp++
+        }
       } else {
-        fn++
+        if (expectedLedger === null || res.status === 'Partial') {
+          tn++
+        } else {
+          fn++
+        }
       }
     }
   }
 
-  const totalEvaluated = tp + fp + tn + fn
-  const precision = (tp + fp > 0) ? (tp / (tp + fp)) * 100 : 100
-  const recall = (tp + fn > 0) ? (tp / (tp + fn)) * 100 : 100
-  const accuracy = totalEvaluated > 0 ? ((tp + tn) / totalEvaluated) * 100 : 100
-  const f1Score = (precision + recall > 0) ? (2 * precision * recall) / (precision + recall) : 100
+  const totalEvaluated = isGroundTruthAvailable ? tp + fp + tn + fn : 0
+  const precision = isGroundTruthAvailable ? ((tp + fp > 0) ? (tp / (tp + fp)) * 100 : 100) : null
+  const recall = isGroundTruthAvailable ? ((tp + fn > 0) ? (tp / (tp + fn)) * 100 : 100) : null
+  const accuracy = isGroundTruthAvailable ? (totalEvaluated > 0 ? ((tp + tn) / totalEvaluated) * 100 : 100) : null
+  const f1Score = isGroundTruthAvailable ? ((precision !== null && recall !== null && (precision + recall > 0)) ? (2 * precision * recall) / (precision + recall) : 100) : null
 
   const totalAttempts = bankStatements.length + invoices.length
   const matchedCount = exactCount + fuzzyCount
@@ -518,15 +500,16 @@ export function runReconciliation(input?: ReconciliationInput): ReconciliationRe
       { pass: 3, label: 'Pass 3 — Partial match', matched: partialCount,                                    running: exactCount + fuzzyCount + partialCount },
     ],
     groundTruthChecked: totalEvaluated,
-    correctMatches: tp + tn,
-    accuracy: Number(accuracy.toFixed(1)),
-    precision: Number(precision.toFixed(1)),
-    recall: Number(recall.toFixed(1)),
-    f1Score: Number(f1Score.toFixed(1)),
-    truePositives: tp,
-    falsePositives: fp,
-    trueNegatives: tn,
-    falseNegatives: fn,
+    correctMatches: isGroundTruthAvailable ? tp + tn : 0,
+    accuracy: accuracy !== null ? Number(accuracy.toFixed(1)) : null,
+    precision: precision !== null ? Number(precision.toFixed(1)) : null,
+    recall: recall !== null ? Number(recall.toFixed(1)) : null,
+    f1Score: f1Score !== null ? Number(f1Score.toFixed(1)) : null,
+    truePositives: isGroundTruthAvailable ? tp : null,
+    falsePositives: isGroundTruthAvailable ? fp : null,
+    trueNegatives: isGroundTruthAvailable ? tn : null,
+    falseNegatives: isGroundTruthAvailable ? fn : null,
+    isGroundTruthAvailable,
     runTimeMs: Math.round(t1 - t0),
   }
 }

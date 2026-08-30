@@ -73,7 +73,7 @@ export default function Dashboard() {
                   <span>Exceptions</span>
                 </div>
                 <div className="d-fin-kpi-chip" style={{ color: '#a78bfa' }}>
-                  <strong>{report.accuracy.toFixed(0)}%</strong>
+                  <strong>{report.accuracy != null ? `${report.accuracy.toFixed(0)}%` : 'N/A'}</strong>
                   <span>Accuracy</span>
                 </div>
                 {mlResult && (

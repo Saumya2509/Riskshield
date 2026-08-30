@@ -72,8 +72,8 @@ export default function SettlementQAPanel({ report }: Props) {
           <h2 className="fin-card-title">Settlement AI Copilot</h2>
           <p className="fin-card-desc">Reasoning agent answering reconciliation &amp; variance queries</p>
         </div>
-        <span className="fin-tag fin-tag--safe" title={`${report.accuracy.toFixed(1)}% accuracy vs ground truth`}>
-          {report.accuracy.toFixed(0)}% accuracy
+        <span className="fin-tag fin-tag--safe" title={report.accuracy != null ? `${report.accuracy.toFixed(1)}% accuracy vs ground truth` : 'Unlabeled dataset — ground truth N/A'}>
+          {report.accuracy != null ? `${report.accuracy.toFixed(0)}% accuracy` : 'Accuracy: N/A'}
         </span>
       </div>
 

@@ -45,7 +45,9 @@ export default function ExceptionList({ report }: Props) {
           {/* Accuracy indicator */}
           <div className="fin-acc-pill">
             <span className="fin-acc-dot" />
-            {report.accuracy.toFixed(1)}% accuracy vs ground truth
+            {report.accuracy != null
+              ? `${report.accuracy.toFixed(1)}% accuracy vs ground truth`
+              : 'Accuracy N/A (Unlabeled Ingest)'}
           </div>
         </div>
       </div>

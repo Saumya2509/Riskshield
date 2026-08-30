@@ -57,9 +57,12 @@ function FinanceChart() {
         <div>
           <h2>Reconciliation Breakdown</h2>
           <p>
-            {total} records · {report.matchRate.toFixed(1)}% match rate ·
-            accuracy <strong style={{ color: '#16a34a' }}>{report.accuracy.toFixed(1)}%</strong>
-            {' '}vs ground truth
+            {total} records · {report.matchRate.toFixed(1)}% match rate ·{' '}
+            {report.accuracy != null ? (
+              <>accuracy <strong style={{ color: '#16a34a' }}>{report.accuracy.toFixed(1)}%</strong> vs ground truth</>
+            ) : (
+              <span style={{ color: '#6b7280' }}>accuracy: <strong>N/A</strong> (unlabeled dataset)</span>
+            )}
           </p>
         </div>
         <div className="d-legend" style={{ flexWrap: 'wrap', gap: 8 }}>

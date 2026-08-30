@@ -49,16 +49,16 @@ export default function MatchSummary({ report }: Props) {
         <span>3-way <strong>{report.threeWayMatches}</strong></span>
         <span className="fin-stat-dot" />
         <span>
-          Precision <strong style={{ color: '#16a34a' }}>{report.precision !== undefined ? report.precision.toFixed(1) : '100.0'}%</strong>
+          Precision <strong style={{ color: '#16a34a' }}>{report.precision != null ? `${report.precision.toFixed(1)}%` : 'N/A'}</strong>
         </span>
         <span className="fin-stat-dot" />
         <span>
-          Recall <strong style={{ color: '#2563eb' }}>{report.recall !== undefined ? report.recall.toFixed(1) : '98.5'}%</strong>
+          Recall <strong style={{ color: '#2563eb' }}>{report.recall != null ? `${report.recall.toFixed(1)}%` : 'N/A'}</strong>
         </span>
         <span className="fin-stat-dot" />
         <span>
-          Accuracy <strong style={{ color: '#059669' }}>{report.accuracy.toFixed(1)}%</strong>
-          {' '}({report.correctMatches}/{report.groundTruthChecked})
+          Accuracy <strong style={{ color: '#059669' }}>{report.accuracy != null ? `${report.accuracy.toFixed(1)}%` : 'N/A'}</strong>
+          {report.accuracy != null ? ` (${report.correctMatches}/${report.groundTruthChecked})` : ' (Unlabeled Ingest)'}
         </span>
         <span className="fin-stat-dot" />
         <span>Engine: <strong>{report.runTimeMs}ms</strong></span>

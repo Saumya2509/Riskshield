@@ -58,13 +58,21 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
       const p2Pct = ((r.fuzzyMatches / Math.max(1, r.totalAttempts)) * 100).toFixed(1)
       const p3Pct = ((r.partialMatches / Math.max(1, r.totalAttempts)) * 100).toFixed(1)
       const excPct = ((r.exceptions / Math.max(1, r.totalAttempts)) * 100).toFixed(1)
-      const precision = (r as any).precision ?? r.accuracy
-      const recall = (r as any).recall ?? r.accuracy
-      const f1Score = (r as any).f1Score ?? r.accuracy
-      const tp = (r as any).truePositives ?? '—'
-      const fp = (r as any).falsePositives ?? '—'
-      const tn = (r as any).trueNegatives ?? '—'
-      const fn = (r as any).falseNegatives ?? '—'
+      const precision = r.precision
+      const recall = r.recall
+      const f1Score = r.f1Score
+      const tp = r.truePositives ?? '—'
+      const fp = r.falsePositives ?? '—'
+      const tn = r.trueNegatives ?? '—'
+      const fn = r.falseNegatives ?? '—'
+
+      const groundTruthBlock = r.accuracy != null
+        ? `**Ground Truth Evaluation (vs labeled batch):**\n` +
+          `• **Precision:** ${precision != null ? `${precision.toFixed(1)}%` : 'N/A'}  •  **Recall:** ${recall != null ? `${recall.toFixed(1)}%` : 'N/A'}  •  **F1-Score:** ${f1Score != null ? `${f1Score.toFixed(1)}%` : 'N/A'}\n` +
+          `• **Confusion Matrix:** TP=${tp}, FP=${fp}, TN=${tn}, FN=${fn}\n` +
+          `• **Overall Accuracy:** ${r.accuracy.toFixed(1)}% (${r.correctMatches}/${r.groundTruthChecked} correct)`
+        : `**Ground Truth Evaluation:**\n` +
+          `• **Status:** N/A (Uploaded batch is unlabeled — ground truth verification is available on benchmark datasets)`
 
       return {
         thinkingProcess: [
@@ -72,18 +80,17 @@ const intents: Array<{ pattern: RegExp; handler: IntentHandler }> = [
           `Audited batch ${r.batchId}: ${r.totalRecords} total records across Bank, Ledger, and Invoices`,
           `Computed pass distributions: ${r.exactMatches} Exact (${p1Pct}%), ${r.fuzzyMatches} Fuzzy (${p2Pct}%), ${r.partialMatches} Partial (${p3Pct}%)`,
           `Evaluated match rate = ${r.matchRate.toFixed(1)}% across ${r.totalAttempts} reconciliation attempts`,
-          `Evaluated ground truth confusion matrix: TP=${tp}, FP=${fp}, TN=${tn}, FN=${fn}`,
-          `Computed real metrics — Precision: ${typeof precision === 'number' ? precision.toFixed(1) : '—'}%, Recall: ${typeof recall === 'number' ? recall.toFixed(1) : '—'}%, F1: ${typeof f1Score === 'number' ? f1Score.toFixed(1) : '—'}%`,
+          r.accuracy != null
+            ? `Evaluated ground truth confusion matrix: TP=${tp}, FP=${fp}, TN=${tn}, FN=${fn}`
+            : `Uploaded dataset is unlabeled — ground truth metrics are N/A`,
+          `Formulating structured performance summary and audit certification status`,
         ],
         answer: `The current batch **Match Rate is ${r.matchRate.toFixed(1)}%** (${r.exactMatches + r.fuzzyMatches} of ${r.totalAttempts} attempts verified):\n\n` +
           `• **Pass 1 (Exact):** **${r.exactMatches} records** (${p1Pct}%) — Zero tolerance (±₹0.00 delta)\n` +
           `• **Pass 2 (Fuzzy MDR):** **${r.fuzzyMatches} records** (${p2Pct}%) — Tolerating ±1.5% gateway fee delta & ±2d settlement lag\n` +
           `• **Pass 3 (Partial):** **${r.partialMatches} records** (${p3Pct}%) — 1%–20% delta discrepancy\n` +
           `• **Exceptions:** **${r.exceptions} records** (${excPct}%) — Flagged for manual review or 1-click settlement\n\n` +
-          `**Ground Truth Evaluation (vs labeled batch):**\n` +
-          `• **Precision:** ${typeof precision === 'number' ? precision.toFixed(1) : '—'}%  •  **Recall:** ${typeof recall === 'number' ? recall.toFixed(1) : '—'}%  •  **F1-Score:** ${typeof f1Score === 'number' ? f1Score.toFixed(1) : '—'}%\n` +
-          `• **Confusion Matrix:** TP=${tp}, FP=${fp}, TN=${tn}, FN=${fn}\n` +
-          `• **Overall Accuracy:** ${r.accuracy.toFixed(1)}% (${r.correctMatches}/${r.groundTruthChecked} correct)`,
+          groundTruthBlock,
         recommendation: `Cleared settlements (₹${Math.round(r.clearedAmount).toLocaleString('en-IN')}) are ready to post to the general ledger. Review the ${r.exceptions} exceptions before closing period.`,
         data: r.results.filter(x => x.status === 'Exact' || x.status === 'Fuzzy'),
         confidence: 99,
