@@ -54,6 +54,10 @@ Processes **500+ records in < 1.8 seconds** with 100% precision across 3 data so
 - **Pass 2 (Fuzzy Tolerance - 85–95% Confidence)**: Accommodates Payment Gateway / Banking MDR processing fees ($\pm 1\%$ fee tolerance) and settlement delays ($\pm 2$ day banking window).
 - **Pass 3 (Partial Delta - 60–80% Confidence)**: Identifies customer short-pays, underpayments, milestone payments, and dispute deductions ($1\% \text{ to } 20\%$ variance range).
 
+<div align="center">
+  <img src="src/workflows/01_reconciliation_workflow.jpg" alt="3-Pass Reconciliation Engine Workflow" width="880"/>
+</div>
+
 ---
 
 ### ⚡ 2. Interactive 1-Click Resolution Engine (`⚡ Solve` & `💾 Save`)
@@ -65,6 +69,10 @@ Replaces passive error reporting with actionable, contextual accounting remedies
 - **`ORPHAN_LEDGER` / `NO_MATCH`**: Reverse accrual journal entry or dispatch payment demand note.
 - **`💾 Save Changes & Reconcile Multi-Source`**: Instantly propagates all resolved items into the live Multi-Source Recon table, updates variance to $₹0.00$, tags the record with green **`(FIX)`** badges, and syncs live to **Supabase**.
 
+<div align="center">
+  <img src="src/workflows/02_exception_resolution_workflow.jpg" alt="1-Click Exception Settlement Workflow" width="880"/>
+</div>
+
 ---
 
 ### 📈 3. Forward Cash Forecaster ($T+1 \dots T+7$ Liquidity Curve)
@@ -74,13 +82,21 @@ Reconciliation outputs directly feed real-time treasury cash management:
 - **Daily Net Delta Histogram**: Zero-baseline bar chart with green positive upward bars ($+₹$) and red downward bars ($-₹$).
 - **Scenario Stress-Testing**: Toggle between Standard ($100\%$), Conservative ($-15\%$ lag), and Accelerated ($+15\%$ collections).
 
+<div align="center">
+  <img src="src/workflows/03_cash_forecast_workflow.jpg" alt="Forward Cash Forecaster Workflow" width="880"/>
+</div>
+
 ---
 
-### 📑 4. Tax-Line Matcher & Corporate Tax Shield
-Automates corporate GL account assignment and tax deductions under Indian CBDT guidelines:
+### 📑 4. Tax-Line Matcher & Statutory Tax Defense Terminal
+Automates corporate GL account assignment, Section 270A penalty protection, and tax deductions under Indian Income Tax Act guidelines:
 - **GL Code Mapping**: `4100-REV-OPR` (Operating Revenue @ 25%), `5100-DIR-COGS` (Direct Supplies), `6200-OPE-GEN` (General OPEX), `1600-FIX-AST` (CapEx Sec 32 Depreciation), and `2400-WHT-PAY` (Foreign Cross-Border 15% DTAA).
-- **Tax Shield Savings Engine**: Automatically calculates exact tax shield savings: $\text{Tax Shield} = \text{Total Verified OPEX} \times 25\%$.
-- **Cross-Border Tax Treaty Drawer**: Pre-configured treaties for India, US, EU, UK, and Singapore.
+- **Statutory Defense Automation**: Assembles cryptographically sealed **Section 144B NFAC responses**, **Form 26A certificates under Section 201(1)** to eliminate 30% TDS disallowance, **Form 15CB TRC treaty clearances**, and **GST DRC-01 Rule 88C schedules**.
+- **Section 270A 200% Penalty Defense**: Builds 3-way hash audit trail (Bank UTR + SAP Ledger + GST Invoice) formatted for CA DSC Class-3 review.
+
+<div align="center">
+  <img src="src/workflows/04_statutory_tax_defense_workflow.jpg" alt="Statutory Tax Defense Flowchart" width="880"/>
+</div>
 
 ---
 
@@ -88,6 +104,10 @@ Automates corporate GL account assignment and tax deductions under Indian CBDT g
 An intelligent natural language assistant for CFOs, controllers, and auditors:
 - **Transparent Thinking Trace**: Shows real-time multi-step accounting reasoning before outputting verified financial figures.
 - **Formatted Data Tables**: Returns clean Markdown tables, currency conversions, and audit references in Indian Rupees ($₹$).
+
+<div align="center">
+  <img src="src/workflows/05_ai_copilot_agent_workflow.jpg" alt="Settlement Copilot Agent Workflow" width="880"/>
+</div>
 
 ---
 
@@ -168,6 +188,10 @@ npm run build
 ---
 
 ## 🛠️ Tech Stack & Engineering Specs
+
+<div align="center">
+  <img src="src/workflows/06_tech_stack_and_tax_rules.jpg" alt="Tech Stack and Statutory Tax Compliance Architecture" width="880"/>
+</div>
 
 | Layer | Technology | Rationale |
 |---|---|---|

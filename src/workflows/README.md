@@ -28,6 +28,8 @@ flowchart LR
 - **Pass 3 Partial**: Matches partial collections with open balance allocation.
 - **6-D ML Scorer**: Features evaluated: (1) Delta variance ratio, (2) Settlement window lag, (3) FX volatility, (4) Round amount anomaly, (5) Velocity deviation, (6) Account code entropy.
 
+![Reconciliation Workflow](./01_reconciliation_workflow.jpg)
+
 ---
 
 ## 2. ⚠️ 1-Click GAAP Exception Settlement Workbench
@@ -60,6 +62,8 @@ flowchart TD
 - **Instant Delta Balancing**: Posts offsetting entries directly to Gateway Fee GL 6140 or Suspense GL 2190.
 - **Audit Schedule**: Generates color-coded Excel `.xls` audit logs with resolution notes and controller sign-offs.
 
+![Exception Resolution Workflow](./02_exception_resolution_workflow.jpg)
+
 ---
 
 ## 3. 📈 Forward Cash Forecaster (T+1 … T+7 … T+30)
@@ -80,6 +84,8 @@ flowchart LR
 - **Settlement Weights**: Realistic front-loaded curves ($40\%$ at T+1, $25\%$ at T+2, $15\%$ at T+3, $10\%$ at T+4, $10\%$ at T+5+).
 - **DSO Stress-Testing**: Allows controllers to dynamically test delayed collections from 0.8x to 2.0x lag factors.
 - **Confidence Bounds**: Calculates epistemic uncertainty intervals around opening, cleared, and closing liquidity.
+
+![Forward Cash Forecast Workflow](./03_cash_forecast_workflow.jpg)
 
 ---
 
@@ -104,6 +110,8 @@ flowchart TD
 - **Regime Simulator**: Compares corporate tax liabilities under Section 115BAA ($25.17\%$), Old Regime ($34.94\%$), and 115BAB ($17.16\%$).
 - **Defense Mechanism**: Pairs each statutory challenge (Scrutiny under Sec 148, TDS disallowance under 40(a)(ia), foreign remittances under Sec 195) with official statutory forms.
 - **Audit Verification**: Read-only acknowledgment certificate view with DIN reference and timestamp.
+
+![Statutory Tax Defense Workflow](./04_statutory_tax_defense_workflow.jpg)
 
 ---
 
@@ -130,3 +138,36 @@ flowchart TD
 - **Progressive Thinking**: Displays multi-step reasoning steps before streaming answers.
 - **Deep Contextual Awareness**: Ingests active batch stats, match rates, open variances, and tax obligations.
 - **Auditable Outputs**: References specific GL codes, voucher references, and statutory clauses.
+
+![AI Settlement Copilot Agent Workflow](./05_ai_copilot_agent_workflow.jpg)
+
+---
+
+## 6. ⚡ Modern Tech Stack & Statutory Tax Compliance Architecture
+**File**: `src/workflows/06_tech_stack_and_tax_rules.jpg`
+
+```mermaid
+flowchart TD
+    subgraph Tech Stack
+        R[React 19.1] --- TS[TypeScript 5.8] --- V[Vite 6.4] --- S[Supabase Realtime]
+        Eng[3-Pass Match Engine] --- ML[6-D Isolation Forest ML] --- Fore[Liquidity Forecaster]
+    end
+    
+    subgraph Statutory Tax Compliance Pillars
+        T1[CBDT Corporate Tax Sec 115BAA @ 25.17%]
+        T2[Section 270A 200% Misreporting Defense]
+        T3[Section 144B NFAC Faceless E-Filing]
+        T4[Form 26A / Sec 201 1 Safe-Harbor]
+        T5[Form 15CB TRC DTAA Remittance]
+        T6[GST DRC-01 Rule 88C Reconciliation]
+    end
+    
+    Tech Stack === Statutory Tax Compliance Pillars
+```
+
+### Key Technical Details:
+- **Enterprise Engineering**: React 19 concurrent features, TypeScript strict typing, and Supabase cloud persistence.
+- **Statutory Audit Defense**: 6 cyber-legal compliance pillars protecting against Section 270A penalties, Section 40(a)(ia) disallowances, and GST turnover variances.
+
+![RiskShield Tech Stack & Statutory Tax Architecture](./06_tech_stack_and_tax_rules.jpg)
+
